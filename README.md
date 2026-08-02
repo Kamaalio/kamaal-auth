@@ -5,10 +5,14 @@ improvement lands once instead of twice.
 
 One repo, two published artifacts:
 
-| Artifact      | Name                                             | Consumed as                                          |
-| ------------- | ------------------------------------------------ | ---------------------------------------------------- |
-| npm package   | `@kamaalio/kamaal-auth` (in [`server/`](server)) | a mountable Hono auth router                         |
-| Swift package | `KamaalAuth` (at the repo root)                  | `KamaalAuthCore`, `KamaalAuthClient`, `KamaalAuthUI` |
+| Artifact      | Name                                             | Consumed as                          |
+| ------------- | ------------------------------------------------ | ------------------------------------ |
+| npm package   | `@kamaalio/kamaal-auth` (in [`server/`](server)) | a mountable Hono auth router         |
+| Swift package | `KamaalAuth` (at the repo root)                  | `KamaalAuthCore`, `KamaalAuthClient` |
+
+> **Not built yet:** `KamaalAuthUI` — the shared `@Observable` auth model, the auth-gate view modifier, and the
+> combined sign-in/sign-up screen, ported from TCG with its components kept inside the package. Until it lands, apps
+> keep their own auth screens on top of `KamaalAuthClient`.
 
 ## Two things this package deliberately does not own
 
@@ -95,4 +99,40 @@ Because both artifacts implement two ends of the same wire contract (notably the
 just            # list commands
 just prepare    # install modules
 just ready      # quality + tests, both languages
+```
+
+## Swift usage
+
+```swift
+let configuration = KamaalAuthClientConfiguration(
+    serverURL: serverURL,
+    basePath: "/app-api/auth",
+    originScheme: .explicit("myapp"),
+    credentialsKey: "\(bundleID).credentials",
+)
+let auth = KamaalAuthClientImpl(configuration: configuration, transport: URLSessionTransport())
+```
+
+Non-auth requests go through the app's own generated OpenAPI client, with this package's middlewares plugged in:
+
+```swift
+Client(
+    serverURL: serverURL,
+    transport: URLSessionTransport(),
+    middlewares: [
+        AuthorizationMiddleware(configuration: configuration, transport: URLSessionTransport()),
+        OriginHeaderMiddleware(configuration: configuration),
+    ],
+)
+```
+
+The middlewares match on request path rather than on a generated operation identifier, so they work against any app's
+codegen output without being coupled to it.
+
+App-specific user fields ride along untouched. Anything the package does not model is preserved on
+`AuthSession.extras`:
+
+```swift
+let currency = session.extras["preferred_currency"]?.stringValue
+let preferences = try session.decodeExtras(as: Preferences.self)
 ```

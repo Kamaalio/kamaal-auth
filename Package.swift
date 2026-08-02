@@ -15,20 +15,19 @@ let package = Package(
     products: [
         .library(name: "KamaalAuthCore", targets: ["KamaalAuthCore"]),
         .library(name: "KamaalAuthClient", targets: ["KamaalAuthClient"]),
-        .library(name: "KamaalAuthUI", targets: ["KamaalAuthUI"]),
         .library(name: "KamaalAuthTestSupport", targets: ["KamaalAuthTestSupport"]),
     ],
     dependencies: [
         .package(url: "https://github.com/Kamaalio/KamaalSwift", .upToNextMajor(from: "3.5.0")),
         .package(url: "https://github.com/apple/swift-http-types", .upToNextMajor(from: "1.6.0")),
         .package(url: "https://github.com/apple/swift-openapi-runtime", .upToNextMajor(from: "1.12.0")),
-        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", .upToNextMajor(from: "1.19.3")),
     ],
     targets: [
         .target(
             name: "KamaalAuthCore",
             dependencies: [
                 .product(name: "KamaalUtils", package: "KamaalSwift"),
+                .product(name: "KamaalLogger", package: "KamaalSwift"),
                 .product(name: "KamaalExtensions", package: "KamaalSwift"),
             ],
             swiftSettings: swiftSettings,
@@ -45,24 +44,10 @@ let package = Package(
             swiftSettings: swiftSettings,
         ),
         .target(
-            name: "KamaalAuthUI",
-            dependencies: [
-                .product(name: "KamaalUI", package: "KamaalSwift"),
-                .product(name: "KamaalUtils", package: "KamaalSwift"),
-                .product(name: "KamaalLogger", package: "KamaalSwift"),
-                .product(name: "KamaalExtensions", package: "KamaalSwift"),
-                "KamaalAuthCore",
-                "KamaalAuthClient",
-            ],
-            resources: [.process("Resources")],
-            swiftSettings: swiftSettings,
-        ),
-        .target(
             name: "KamaalAuthTestSupport",
             dependencies: [
                 .product(name: "HTTPTypes", package: "swift-http-types"),
                 .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
-                .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
                 "KamaalAuthCore",
                 "KamaalAuthClient",
             ],
@@ -81,16 +66,6 @@ let package = Package(
                 "KamaalAuthClient",
                 "KamaalAuthTestSupport",
             ],
-            swiftSettings: swiftSettings,
-        ),
-        .testTarget(
-            name: "KamaalAuthUITests",
-            dependencies: [
-                .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
-                "KamaalAuthUI",
-                "KamaalAuthTestSupport",
-            ],
-            exclude: ["__Snapshots__"],
             swiftSettings: swiftSettings,
         ),
     ]
