@@ -1,0 +1,79 @@
+README.md
+  s_aaa74fb818347c::t_d07eadd792e1ed 13-15
+  s_aaa74fb818347c::t_fb21eb92812d55 8-12,103-138
+Sources/KamaalAuthCore/Expirable.swift
+  s_aaa74fb818347c::t_65dc9177ebdf11 1-22
+Sources/KamaalAuthClient/Internals/AuthHTTPClient.swift
+  s_aaa74fb818347c::t_ba32e2031a0ca8 1-90
+Sources/KamaalAuthClient/Middleware/SessionTokenMiddleware.swift
+  s_aaa74fb818347c::t_89d4d207a72413 1-43
+Sources/KamaalAuthClient/Middleware/AuthorizationMiddleware.swift
+  s_aaa74fb818347c::t_10e8ca829f06a1 1-105
+Sources/KamaalAuthClient/Errors/AuthErrors.swift
+  s_aaa74fb818347c::t_04d0e7af36a2a7 1-43
+Package.swift
+  s_aaa74fb818347c::t_05ecfcd72c3c06 30
+Sources/KamaalAuthClient/Internals/AuthValidationErrorParser.swift
+  s_aaa74fb818347c::t_8890eb34aea148 1-42
+Sources/KamaalAuthClient/KamaalAuthClient.swift
+  s_aaa74fb818347c::t_a8eb5f19520cf0 1-311
+Sources/KamaalAuthTestSupport/MockAuthTransport.swift
+  s_aaa74fb818347c::t_cb2280d934378c 1-54,64-131
+  s_aaa74fb818347c::t_0a362db4465b08 55-63
+Sources/KamaalAuthClient/Models/AuthValidationIssue.swift
+  s_aaa74fb818347c::t_69871bacef7f61 1-24
+Sources/KamaalAuthCore/Credentials.swift
+  s_aaa74fb818347c::t_328780de4227a3 1-111
+Sources/KamaalAuthClient/AuthPaths.swift
+  s_aaa74fb818347c::t_a97439d75de448 1-38
+Sources/KamaalAuthClient/Internals/WirePayloads.swift
+  s_aaa74fb818347c::t_87e0948335b4ec 101-103,105-112
+  s_aaa74fb818347c::t_8b05f9b6cfbe48 1-100,104,113-129
+  s_aaa74fb818347c::t_9645154897ec68 130
+Sources/KamaalAuthCore/AuthHeaderNames.swift
+  s_aaa74fb818347c::t_50a3d764955099 1-15
+Sources/KamaalAuthClient/Models/AuthJSONValue.swift
+  s_aaa74fb818347c::t_a2c362e178d7c6 1-65
+Sources/KamaalAuthCore/CredentialsStore.swift
+  s_aaa74fb818347c::t_f30cfcdce62ba9 1-85
+Sources/KamaalAuthClient/Internals/TokenRefresher.swift
+  s_aaa74fb818347c::t_b249eb6100de21 1-102
+  s_aaa74fb818347c::t_2f0453c23f63b7 103-104
+Sources/KamaalAuthClient/KamaalAuthClientConfiguration.swift
+  s_aaa74fb818347c::t_3ca06b2452eec5 1-63
+Sources/KamaalAuthClient/Preview/PreviewKamaalAuthClient.swift
+  s_aaa74fb818347c::t_d5233463146ff5 1-84
+Tests/KamaalAuthCoreTests/CredentialsTests.swift
+  s_aaa74fb818347c::t_23c3a6e144907d 1-164
+Sources/KamaalAuthClient/Middleware/OriginHeaderMiddleware.swift
+  s_aaa74fb818347c::t_26977dc93c3fc4 1-36
+Sources/KamaalAuthClient/Models/AuthSession.swift
+  s_aaa74fb818347c::t_ab766277742fe2 1-50
+Sources/KamaalAuthClient/Middleware/RedactingLoggingMiddleware.swift
+  s_aaa74fb818347c::t_4496de2d218fa5 1-46
+Tests/KamaalAuthClientTests/KamaalAuthClientTests.swift
+  s_aaa74fb818347c::t_8bfd9c1eee3abb 13-14
+  s_aaa74fb818347c::t_7c54ae8b801309 1-12,15-316,318-344,346-423,425-440,442-473
+  s_aaa74fb818347c::t_400b3910b11614 317
+  s_aaa74fb818347c::t_2c1b4d82c8291b 345
+  s_aaa74fb818347c::t_6e2b8987601d0b 424
+  s_aaa74fb818347c::t_27f137e5fc931d 441
+Package.resolved
+  s_aaa74fb818347c::t_97bec1953e1a6e 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "cc8e013874e44ae6c72132bedf59e244a9558c04",
+  "prompts": {},
+  "sessions": {
+    "s_aaa74fb818347c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6e5e8f8-ddba-46b2-a12f-efecec50700b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  }
+}
