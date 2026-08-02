@@ -1,0 +1,116 @@
+server/src/logging/index.ts
+  s_aaa74fb818347c::t_31a78bf50b26f0 1-28
+.oxfmtrc.json
+  s_aaa74fb818347c::t_619d5e4879f361 1-7
+server/src/errors/index.ts
+  s_aaa74fb818347c::t_3aa40e21065d9c 1-63
+server/src/headers/credentials.ts
+  s_aaa74fb818347c::t_a24c2b141d9c23 1-43
+server/src/hooks/infer.ts
+  s_aaa74fb818347c::t_9267a7c101595a 1-49
+server/scripts/publish.sh
+  s_aaa74fb818347c::t_35c2169697f11e 1-15
+server/src/testing/index.ts
+  s_aaa74fb818347c::t_f3f8c9990e9c34 1-238
+  s_aaa74fb818347c::t_5f77dcbb490d19 239-241
+package.json
+  s_aaa74fb818347c::t_ac1cac66ed7ea3 1-32
+  s_aaa74fb818347c::t_6a67dd40371a4f 33
+server/vitest.config.ts
+  s_aaa74fb818347c::t_de2893a83657b2 1-8
+server/src/router/routes.ts
+  s_aaa74fb818347c::t_4b09eb2e03a48e 1-141
+.github/workflows/main.yaml
+  s_aaa74fb818347c::t_491018df97fa33 1-100
+server/src/hooks/types.ts
+  s_aaa74fb818347c::t_7134038632c242 1-132
+.node-version
+  s_aaa74fb818347c::t_005d3508271d61 1
+server/src/schemas/errors.ts
+  s_aaa74fb818347c::t_a178be492d36f6 1-41
+server/src/middleware/session.ts
+  s_aaa74fb818347c::t_5deb16013278c2 6
+  s_aaa74fb818347c::t_433b5b02cedbb7 205-206,210
+  s_aaa74fb818347c::t_916d173ede81f8 1-4,11-204,207-209,211-215
+  s_aaa74fb818347c::t_64892cd67b6e45 5
+  s_aaa74fb818347c::t_e0afbfe4d68de6 7-10
+server/scripts/deployment-package-json.ts
+  s_aaa74fb818347c::t_6f935de3905a4d 1-21
+server/src/config.ts
+  s_aaa74fb818347c::t_5e4e2cd642b44b 1-50
+.github/workflows/release-npm.yaml
+  s_aaa74fb818347c::t_f9921b7df977aa 1-53
+server/tsconfig.json
+  s_aaa74fb818347c::t_6cf17d325bb7e1 1-22
+server/src/router/factory.ts
+  s_aaa74fb818347c::t_9fa3cadd77bb99 176,180
+  s_aaa74fb818347c::t_b694d260edab5d 197
+  s_aaa74fb818347c::t_21263adec508d4 141-145
+  s_aaa74fb818347c::t_1b1d44f40f21cd 263-268
+  s_aaa74fb818347c::t_708979810cddd1 8
+  s_aaa74fb818347c::t_5250bddcad62a8 1-5,10-16,19-23,30-114,116-140,146-175,177-179,181-196,198-262,269-316
+  s_aaa74fb818347c::t_baee13e26cbdd1 6-7
+  s_aaa74fb818347c::t_bd873ff70c434c 9
+  s_aaa74fb818347c::t_35c6be5c4f5f3e 17-18
+  s_aaa74fb818347c::t_550fcce849507c 24-29
+  s_aaa74fb818347c::t_c79310ceb72a1f 115
+README.md
+  s_aaa74fb818347c::t_be51e76d6daf75 1-88
+  s_aaa74fb818347c::t_d679427126e8d6 89-98
+.gitignore
+  s_aaa74fb818347c::t_ea6cb73175d4ae 1-32
+server/src/headers/credentials.test.ts
+  s_aaa74fb818347c::t_54ad336424908e 1-63
+server/src/schemas/headers.ts
+  s_aaa74fb818347c::t_7b46e5df49a565 1-27
+pnpm-workspace.yaml
+  s_aaa74fb818347c::t_756b0c2c10fe8f 1-2
+server/src/schemas/payloads.ts
+  s_aaa74fb818347c::t_964496f6fefdb9 1-76
+server/package.json
+  s_aaa74fb818347c::t_04ad796c450b66 1-41,43,45-46,49
+  s_aaa74fb818347c::t_366ed74044d896 42,44,47-48,50-51
+server/src/router/factory.test.ts
+  s_aaa74fb818347c::t_7758beef64c556 43,46
+  s_aaa74fb818347c::t_8592ad89764d9d 1-42,44-45,47-377
+.oxlintrc.json
+  s_aaa74fb818347c::t_59bc743c156f05 13
+  s_aaa74fb818347c::t_274087c44c1464 10-12
+  s_aaa74fb818347c::t_f0f4f1b6b623d3 14-16
+server/src/constants.ts
+  s_aaa74fb818347c::t_6b8fd315ef1868 1-44
+server/src/index.ts
+  s_aaa74fb818347c::t_618754054d4f21 1-89
+server/src/schemas/responses.ts
+  s_aaa74fb818347c::t_74504026927e9b 1-97
+server/src/utils/index.ts
+  s_aaa74fb818347c::t_818a6888faca95 1-35
+Package.swift
+  s_aaa74fb818347c::t_0a20b0ccf98f52 1-97
+.github/workflows/release-spm.yaml
+  s_aaa74fb818347c::t_50f6e09c0fd9a5 1-34
+justfile
+  s_aaa74fb818347c::t_4741b3ab8f31dc 1-114
+.husky/pre-commit
+  s_aaa74fb818347c::t_c70d7d155e93a1 1
+.swift-format
+  s_aaa74fb818347c::t_18f0592495d07c 1-75
+pnpm-lock.yaml
+  s_aaa74fb818347c::t_fec8595245dbd8 1-1803
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "1a85caa6252fa2d345647ac6d39f28f8355c595d",
+  "prompts": {},
+  "sessions": {
+    "s_aaa74fb818347c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6e5e8f8-ddba-46b2-a12f-efecec50700b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  }
+}
