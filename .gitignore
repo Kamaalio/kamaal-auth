@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+*.log
+.pnpm-store
+.npm
+
+# Swift / SwiftPM
+.build/
+.swiftpm/
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+xcuserdata/
+DerivedData/
+*.xcresult
+
+# Editors
+.vscode-test
+.idea/
+
+# Env
+.env
+.env.local

@@ -1,0 +1,53 @@
+name: Release npm
+
+# npm releases are tagged `npm/<version>` so they never collide with the bare
+# semver tags SwiftPM consumes. See release-spm.yaml.
+on:
+  push:
+    tags:
+      - 'npm/*'
+
+env:
+  PNPM_VERSION: 11.17.0
+
+permissions:
+  id-token: write
+  contents: read
+
+defaults:
+  run:
+    working-directory: server
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git - Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+
+      - name: Resolve version from tag
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#npm/}" >> "$GITHUB_OUTPUT"
+
+      - name: Install modules
+        run: pnpm i
+
+      - name: Publish ${{ steps.version.outputs.value }}
+        run: pnpm release
+        env:
+          VERSION: ${{ steps.version.outputs.value }}

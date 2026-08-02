@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+
+env:
+  PNPM_VERSION: 11.17.0
+
+concurrency:
+  group: ${{ github.ref }}-ci
+  cancel-in-progress: true
+
+jobs:
+  quality-server:
+    name: Quality (server)
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git - Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+
+      - name: Install modules
+        run: pnpm i
+
+      - name: Check formatting
+        run: pnpm fmt:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm server typecheck
+
+      - name: Assert a single zod instance
+        run: pnpm why zod
+
+  test-server:
+    name: Test (server)
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git - Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+
+      - name: Install modules
+        run: pnpm i
+
+      - name: Run tests
+        run: pnpm server test
+
+  quality-swift:
+    name: Quality (swift)
+    timeout-minutes: 10
+    runs-on: macos-latest
+    steps:
+      - name: Git - Checkout
+        uses: actions/checkout@v7
+
+      - name: Check formatting
+        run: swift format lint --strict -r Sources Tests
+
+  test-swift:
+    name: Test (swift)
+    timeout-minutes: 20
+    runs-on: macos-latest
+    steps:
+      - name: Git - Checkout
+        uses: actions/checkout@v7
+
+      - name: Build
+        run: swift build
+
+      - name: Run tests
+        run: swift test

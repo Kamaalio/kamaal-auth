@@ -1,0 +1,51 @@
+{
+  "name": "@kamaalio/kamaal-auth",
+  "version": "0.0.0",
+  "description": "Mountable Hono auth router driven by consumer-supplied hooks. Brings no auth library or database schema of its own.",
+  "license": "MIT",
+  "author": "Kamaal Farah",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kamaalio/kamaal-auth"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "release": "sh scripts/publish.sh"
+  },
+  "devDependencies": {
+    "@hono/zod-openapi": "^1.5.1",
+    "@types/node": "^26.1.1",
+    "hono": "^4.12.31",
+    "jose": "^6.2.4",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "@hono/zod-openapi": "^1.5.1",
+    "hono": "^4.12.31",
+    "jose": "^6.2.4",
+    "zod": "^4.4.3"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
