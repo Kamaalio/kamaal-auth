@@ -1,0 +1,20 @@
+README.md
+  s_c392881381ddb2::t_4b2925c0b0fad9 3
+  s_c392881381ddb2::t_3203bca7e69a95 13-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "8a2dbde3744bcc540faedf79555ca084aade5b43",
+  "prompts": {},
+  "sessions": {
+    "s_c392881381ddb2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8e118c71-ede1-4ea6-9c94-6e1600058a58",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  }
+}
