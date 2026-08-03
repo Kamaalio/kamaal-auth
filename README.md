@@ -19,7 +19,7 @@ One repo, two published artifacts:
 **It does not own your database schema.** Your app defines and migrates its own `user` / `session` / `account` /
 `verification` / `jwks` tables and keeps them fully visible. Nothing here reads or writes them.
 
-**It does not accept a `better-auth` instance.** You supply _hook functions_ implementing the auth operations, and the
+**It does not make requests, or accept a `better-auth` instance.** You supply _hook functions_ implementing the auth operations, and the
 package derives its types from those signatures. `better-auth`, `drizzle-orm`, and your database driver never enter this
 package's dependency graph — which is why two apps on different `better-auth` versions can share it.
 
@@ -103,31 +103,41 @@ just ready      # quality + tests, both languages
 
 ## Swift usage
 
-```swift
-let configuration = KamaalAuthClientConfiguration(
-    serverURL: serverURL,
-    basePath: "/app-api/auth",
-    originScheme: .explicit("myapp"),
-    credentialsKey: "\(bundleID).credentials",
-)
-let auth = KamaalAuthClientImpl(configuration: configuration, transport: URLSessionTransport())
-```
-
-Non-auth requests go through the app's own generated OpenAPI client, with this package's middlewares plugged in:
+Same idea as the server: you supply the requests, the package supplies everything worth sharing. Implement
+`AuthRequestHooks` with your own generated client, and `KamaalAuthClient` owns credential storage, the refresh policy,
+expiry rules, session modelling and error semantics.
 
 ```swift
-Client(
-    serverURL: serverURL,
-    transport: URLSessionTransport(),
-    middlewares: [
-        AuthorizationMiddleware(configuration: configuration, transport: URLSessionTransport()),
-        OriginHeaderMiddleware(configuration: configuration),
-    ],
-)
+struct MyAuthHooks: AuthRequestHooks {
+    let client: Client  // your generated OpenAPI client
+
+    func signIn(_ payload: SignInPayload) async -> AuthRequestOutcome<AuthCredentialHeaders> {
+        // call your client, then hand the response headers over
+        guard let headers = AuthCredentialHeaders(headers: response.headers) else {
+            return .failure(AuthRequestFailure(status: 500))
+        }
+        return .success(headers)
+    }
+    // signUp, signOut, session, issueToken likewise
+}
+
+let auth = KamaalAuthClientImpl(hooks: MyAuthHooks(client: client), credentialsKey: "\(bundleID).credentials")
 ```
 
-The middlewares match on request path rather than on a generated operation identifier, so they work against any app's
-codegen output without being coupled to it.
+Because the requests live in your app, this package has no HTTP stack, no transport, and no knowledge of your code
+generation. Its only dependency is `KamaalSwift`.
+
+`AuthErrorBody.failure(status:body:)` turns an error response into an `AuthRequestFailure`, including the field-level
+validations, so each app does not re-derive the envelope.
+
+To authenticate your app's other requests, ask for a token that is guaranteed fresh — it refreshes first when the
+stored one is stale or nearly expired:
+
+```swift
+if let token = await auth.validAuthToken() {
+    request.headerFields[.authorization] = "Bearer \(token)"
+}
+```
 
 App-specific user fields ride along untouched. Anything the package does not model is preserved on
 `AuthSession.extras`:
@@ -136,3 +146,6 @@ App-specific user fields ride along untouched. Anything the package does not mod
 let currency = session.extras["preferred_currency"]?.stringValue
 let preferences = try session.decodeExtras(as: Preferences.self)
 ```
+
+> Credentials stored in an older shape fail to decode, which reads as signed out. Adopting this package costs each app
+> one forced re-login.

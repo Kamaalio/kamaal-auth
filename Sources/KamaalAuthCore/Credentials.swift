@@ -74,38 +74,6 @@ public struct Credentials: Codable, Hashable, Sendable {
         )
     }
 
-    private enum CodingKeys: String, CodingKey {
-        case authToken
-        case authTokenExpiryDate
-        case sessionToken
-        case sessionUpdateAge
-        case lastSessionUpdate
-        case sessionExpiryDate
-    }
-
-    /// Legacy key from an app that stored the JWT expiry as `expiryDate`.
-    private enum LegacyCodingKeys: String, CodingKey {
-        case expiryDate
-    }
-
-    /// Decodes both the current shape and the older one that named the JWT expiry `expiryDate`.
-    ///
-    /// Without this, upgrading an app that used the old shape would fail to decode every stored credential and
-    /// silently sign the user out.
-    public init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        authToken = try container.decode(String.self, forKey: .authToken)
-        sessionToken = try container.decode(String.self, forKey: .sessionToken)
-        sessionUpdateAge = try container.decode(TimeInterval.self, forKey: .sessionUpdateAge)
-        lastSessionUpdate = try container.decode(Date.self, forKey: .lastSessionUpdate)
-        sessionExpiryDate = try container.decodeIfPresent(Date.self, forKey: .sessionExpiryDate)
-
-        if let expiryDate = try container.decodeIfPresent(Date.self, forKey: .authTokenExpiryDate) {
-            authTokenExpiryDate = expiryDate
-            return
-        }
-
-        let legacyContainer = try decoder.container(keyedBy: LegacyCodingKeys.self)
-        authTokenExpiryDate = try legacyContainer.decode(Date.self, forKey: .expiryDate)
-    }
+    // Credentials stored in an older shape simply fail to decode, which reads as signed out and prompts one
+    // re-login. That is the accepted cost of every app converging on this shape.
 }

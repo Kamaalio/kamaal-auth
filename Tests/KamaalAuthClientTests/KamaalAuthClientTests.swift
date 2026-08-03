@@ -10,64 +10,53 @@ import Testing
 
 @testable import KamaalAuthClient
 
-/// Never dialed: `MockAuthTransport` answers every request without touching the network.
-private let serverURL = URL(fileURLWithPath: "/mock-server")
 private let credentialsKey = "test.credentials"
-private let paths = AuthPaths(basePath: AuthDefaults.basePath)
-
-private let userJSON = """
-    {
-      "id": "user_1",
-      "name": "John Doe",
-      "email": "john.doe@example.com",
-      "email_verified": true,
-      "created_at": "2026-07-07T10:30:00.000Z"
-    }
-    """
 
 private func makeClient(
-    transport: MockAuthTransport,
-    store: InMemoryCredentialsStore = InMemoryCredentialsStore(),
-    sendsSessionCookie: Bool = false
+    hooks: MockAuthRequestHooks,
+    store: InMemoryCredentialsStore = InMemoryCredentialsStore()
 ) -> (KamaalAuthClientImpl, InMemoryCredentialsStore) {
-    let configuration = KamaalAuthClientConfiguration(
-        serverURL: serverURL,
-        originScheme: .explicit("testapp"),
-        credentialsKey: credentialsKey,
-        credentialsStore: store,
-        sendsSessionCookie: sendsSessionCookie,
-    )
-
-    return (KamaalAuthClientImpl(configuration: configuration, transport: transport), store)
+    (KamaalAuthClientImpl(hooks: hooks, credentialsKey: credentialsKey, credentialsStore: store), store)
 }
 
-private func storedCredentials(
+@discardableResult
+private func storeCredentials(
     in store: InMemoryCredentialsStore,
     authTokenExpiryDate: Date = Date.now.addingTimeInterval(604_800),
     lastSessionUpdate: Date = .now,
     sessionExpiryDate: Date? = Date.now.addingTimeInterval(2_592_000)
-) throws {
-    try store.store(
-        Credentials(
-            authToken: "stored.auth.token",
-            authTokenExpiryDate: authTokenExpiryDate,
-            sessionToken: "stored-session-token",
-            sessionUpdateAge: 86_400,
-            lastSessionUpdate: lastSessionUpdate,
-            sessionExpiryDate: sessionExpiryDate,
-        ),
-        forKey: credentialsKey,
+) throws -> Credentials {
+    let credentials = Credentials(
+        authToken: "stored.auth.token",
+        authTokenExpiryDate: authTokenExpiryDate,
+        sessionToken: "stored-session-token",
+        sessionUpdateAge: 86_400,
+        lastSessionUpdate: lastSessionUpdate,
+        sessionExpiryDate: sessionExpiryDate,
+    )
+    try store.store(credentials, forKey: credentialsKey)
+
+    return credentials
+}
+
+private func sampleSession(expiresAt: Date = .distantFuture) -> AuthSession {
+    AuthSession(
+        id: "user_1",
+        name: "John Doe",
+        email: "john.doe@example.com",
+        emailVerified: true,
+        createdAt: .now,
+        expiresAt: expiresAt,
+        extras: ["preferred_currency": .string("EUR")],
     )
 }
 
 @Suite("Sign up")
 struct SignUpTests {
-    @Test("Persists the credentials carried by the response headers")
+    @Test("Persists the credentials the hook returned")
     func persistsCredentials() async throws {
-        let transport = MockAuthTransport(responses: [
-            paths.signUp: [.authenticated(status: 201, json: #"{"token":"session-token","user":\#(userJSON)}"#)]
-        ])
-        let (client, store) = makeClient(transport: transport)
+        let hooks = MockAuthRequestHooks().stub(.signUp, with: .success(MockAuthRequestHooks.credentials()))
+        let (client, store) = makeClient(hooks: hooks)
 
         let result = await client.signUp(with: .init(email: "a@b.com", password: "Password1!", name: "John Doe"))
 
@@ -79,10 +68,9 @@ struct SignUpTests {
 
     @Test("Maps a 409 onto a conflict")
     func mapsConflict() async {
-        let transport = MockAuthTransport(responses: [
-            paths.signUp: [.init(status: 409, json: #"{"code":"USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL"}"#)]
-        ])
-        let (client, _) = makeClient(transport: transport)
+        let hooks = MockAuthRequestHooks()
+            .stub(.signUp, with: .failure(.init(status: 409, code: "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL")))
+        let (client, _) = makeClient(hooks: hooks)
 
         let result = await client.signUp(with: .init(email: "a@b.com", password: "Password1!", name: "John Doe"))
 
@@ -92,15 +80,12 @@ struct SignUpTests {
         }
     }
 
-    @Test("Surfaces field-level validation issues from a 400")
+    @Test("Surfaces the field-level validation issues from a 400")
     func surfacesValidationIssues() async {
-        let body = """
-            {"message":"Invalid payload","code":"INVALID_PAYLOAD","context":{"validations":[
-              {"code":"too_small","path":["password"],"message":"Too short"}
-            ]}}
-            """
-        let transport = MockAuthTransport(responses: [paths.signUp: [.init(status: 400, json: body)]])
-        let (client, _) = makeClient(transport: transport)
+        let issue = AuthValidationIssue(code: "too_small", path: ["password"], message: "Too short")
+        let hooks = MockAuthRequestHooks()
+            .stub(.signUp, with: .failure(.init(status: 400, code: "INVALID_PAYLOAD", validations: [issue])))
+        let (client, _) = makeClient(hooks: hooks)
 
         let result = await client.signUp(with: .init(email: "a@b.com", password: "x", name: "John Doe"))
 
@@ -108,24 +93,8 @@ struct SignUpTests {
             Issue.record("Expected a bad request, got \(result)")
             return
         }
-        #expect(validations.count == 1)
         #expect(validations.first?.field == "password")
         #expect(validations.first?.message == "Too short")
-    }
-
-    @Test("Fails when the response omits the credential headers")
-    func failsWithoutCredentialHeaders() async {
-        let transport = MockAuthTransport(responses: [
-            paths.signUp: [.init(status: 201, json: #"{"token":"t","user":\#(userJSON)}"#)]
-        ])
-        let (client, _) = makeClient(transport: transport)
-
-        let result = await client.signUp(with: .init(email: "a@b.com", password: "Password1!", name: "John Doe"))
-
-        guard case .failure(.credentialsUnavailable) = result else {
-            Issue.record("Expected credentialsUnavailable, got \(result)")
-            return
-        }
     }
 }
 
@@ -133,10 +102,9 @@ struct SignUpTests {
 struct SignInTests {
     @Test("Reports rejected credentials as a bad request with no field errors")
     func reportsRejectedCredentials() async {
-        let transport = MockAuthTransport(responses: [
-            paths.signIn: [.init(status: 401, json: #"{"code":"INVALID_EMAIL_OR_PASSWORD"}"#)]
-        ])
-        let (client, _) = makeClient(transport: transport)
+        let hooks = MockAuthRequestHooks()
+            .stub(.signIn, with: .failure(.init(status: 401, code: "INVALID_EMAIL_OR_PASSWORD")))
+        let (client, _) = makeClient(hooks: hooks)
 
         let result = await client.signIn(with: .init(email: "a@b.com", password: "nope"))
 
@@ -149,10 +117,8 @@ struct SignInTests {
 
     @Test("Reports any other 401 as an unavailable session")
     func reportsOther401AsSessionUnavailable() async {
-        let transport = MockAuthTransport(responses: [
-            paths.signIn: [.init(status: 401, json: #"{"code":"SOMETHING_ELSE"}"#)]
-        ])
-        let (client, _) = makeClient(transport: transport)
+        let hooks = MockAuthRequestHooks().stub(.signIn, with: .failure(.init(status: 401, code: "SOMETHING_ELSE")))
+        let (client, _) = makeClient(hooks: hooks)
 
         let result = await client.signIn(with: .init(email: "a@b.com", password: "nope"))
 
@@ -162,44 +128,32 @@ struct SignInTests {
         }
     }
 
-    @Test("Clears stale credentials before signing in")
-    func clearsStaleCredentials() async throws {
+    @Test("Clears stale credentials even when the sign in fails")
+    func clearsStaleCredentialsOnFailure() async throws {
         let store = InMemoryCredentialsStore()
-        try storedCredentials(in: store)
-        let transport = MockAuthTransport(responses: [
-            paths.signIn: [.authenticated(status: 200, json: #"{"token":"session-token","user":\#(userJSON)}"#)]
-        ])
-        let (client, _) = makeClient(transport: transport, store: store)
+        try storeCredentials(in: store)
+        let hooks = MockAuthRequestHooks().stub(.signIn, with: .failure(.init(status: 401, code: "SOMETHING_ELSE")))
+        let (client, _) = makeClient(hooks: hooks, store: store)
 
-        _ = await client.signIn(with: .init(email: "a@b.com", password: "Password1!"))
+        _ = await client.signIn(with: .init(email: "a@b.com", password: "nope"))
 
-        let credentials = try #require(try store.credentials(forKey: credentialsKey))
-        #expect(credentials.authToken == "header.payload.signature")
+        #expect(try store.credentials(forKey: credentialsKey) == nil)
     }
 }
 
 @Suite("Session")
 struct SessionTests {
-    @Test("Decodes the session and preserves unknown user fields as extras")
+    @Test("Returns the session and preserves app-specific fields as extras")
     func preservesExtras() async throws {
         let store = InMemoryCredentialsStore()
-        try storedCredentials(in: store)
-        let body = """
-            {"session":{"expires_at":"2026-08-12T12:08:28.382Z","created_at":"2026-08-05T12:08:28.382Z",
-            "updated_at":"2026-08-05T12:08:28.382Z"},
-            "user":{"id":"user_1","name":"John Doe","email":"john.doe@example.com","email_verified":true,
-            "created_at":"2026-07-07T10:30:00.000Z","preferred_currency":"EUR",
-            "has_preferred_currency_preference":true}}
-            """
-        let transport = MockAuthTransport(responses: [paths.session: [.init(status: 200, json: body)]])
-        let (client, _) = makeClient(transport: transport, store: store)
+        try storeCredentials(in: store)
+        let hooks = MockAuthRequestHooks().stubSession(.success(sampleSession()))
+        let (client, _) = makeClient(hooks: hooks, store: store)
 
         let session = try (await client.session()).get()
 
         #expect(session.email == "john.doe@example.com")
         #expect(session.extras["preferred_currency"]?.stringValue == "EUR")
-        #expect(session.extras["has_preferred_currency_preference"]?.boolValue == true)
-        #expect(session.extras["email"] == nil)
     }
 
     @Test("Decodes extras into an app-supplied type")
@@ -212,25 +166,15 @@ struct SessionTests {
             }
         }
 
-        let session = AuthSession(
-            id: "1",
-            name: "John Doe",
-            email: "a@b.com",
-            emailVerified: true,
-            createdAt: .now,
-            expiresAt: .distantFuture,
-            extras: ["preferred_currency": .string("EUR")],
-        )
-
-        #expect(try session.decodeExtras(as: Preferences.self).preferredCurrency == "EUR")
+        #expect(try sampleSession().decodeExtras(as: Preferences.self).preferredCurrency == "EUR")
     }
 
     @Test("Deletes credentials and reports unauthorized on a 401")
     func deletesCredentialsOnUnauthorized() async throws {
         let store = InMemoryCredentialsStore()
-        try storedCredentials(in: store)
-        let transport = MockAuthTransport(responses: [paths.session: [.init(status: 401, json: "{}")]])
-        let (client, _) = makeClient(transport: transport, store: store)
+        try storeCredentials(in: store)
+        let hooks = MockAuthRequestHooks().stubSession(.failure(.init(status: 401)))
+        let (client, _) = makeClient(hooks: hooks, store: store)
 
         let result = await client.session()
 
@@ -241,10 +185,22 @@ struct SessionTests {
         #expect(try store.credentials(forKey: credentialsKey) == nil)
     }
 
-    @Test("Reports unauthorized without a request when nothing is stored")
+    @Test("Keeps credentials when the failure is not an auth failure")
+    func keepsCredentialsOnServerError() async throws {
+        let store = InMemoryCredentialsStore()
+        try storeCredentials(in: store)
+        let hooks = MockAuthRequestHooks().stubSession(.failure(.init(status: 503)))
+        let (client, _) = makeClient(hooks: hooks, store: store)
+
+        _ = await client.session()
+
+        #expect(try store.credentials(forKey: credentialsKey) != nil)
+    }
+
+    @Test("Reports unauthorized without calling the hook when nothing is stored")
     func reportsUnauthorizedWithoutCredentials() async {
-        let transport = MockAuthTransport()
-        let (client, _) = makeClient(transport: transport)
+        let hooks = MockAuthRequestHooks()
+        let (client, _) = makeClient(hooks: hooks)
 
         let result = await client.session()
 
@@ -252,23 +208,20 @@ struct SessionTests {
             Issue.record("Expected unauthorized, got \(result)")
             return
         }
-        #expect(transport.requests.isEmpty)
+        #expect(hooks.callCount(.session) == 0)
     }
 
     @Test("Caches the session expiry so the next launch can answer offline")
     func cachesSessionExpiry() async throws {
         let store = InMemoryCredentialsStore()
-        try storedCredentials(in: store, sessionExpiryDate: nil)
-        let body = """
-            {"session":{"expires_at":"2026-08-12T12:08:28.382Z","created_at":"2026-08-05T12:08:28.382Z",
-            "updated_at":"2026-08-05T12:08:28.382Z"},"user":\(userJSON)}
-            """
-        let transport = MockAuthTransport(responses: [paths.session: [.init(status: 200, json: body)]])
-        let (client, _) = makeClient(transport: transport, store: store)
+        try storeCredentials(in: store, sessionExpiryDate: nil)
+        let expiresAt = Date.now.addingTimeInterval(2_592_000)
+        let hooks = MockAuthRequestHooks().stubSession(.success(sampleSession(expiresAt: expiresAt)))
+        let (client, _) = makeClient(hooks: hooks, store: store)
 
         _ = await client.session()
 
-        #expect(try store.credentials(forKey: credentialsKey)?.sessionExpiryDate != nil)
+        #expect(try store.credentials(forKey: credentialsKey)?.sessionExpiryDate == expiresAt)
     }
 }
 
@@ -276,7 +229,7 @@ struct SessionTests {
 struct CredentialValidityTests {
     @Test("Reports no valid credentials when nothing is stored")
     func reportsNoCredentials() {
-        let (client, _) = makeClient(transport: MockAuthTransport())
+        let (client, _) = makeClient(hooks: MockAuthRequestHooks())
 
         #expect(client.hasValidCredentials == false)
     }
@@ -284,8 +237,8 @@ struct CredentialValidityTests {
     @Test("Reports valid credentials while the session is live")
     func reportsValidCredentials() throws {
         let store = InMemoryCredentialsStore()
-        try storedCredentials(in: store)
-        let (client, _) = makeClient(transport: MockAuthTransport(), store: store)
+        try storeCredentials(in: store)
+        let (client, _) = makeClient(hooks: MockAuthRequestHooks(), store: store)
 
         #expect(client.hasValidCredentials)
     }
@@ -293,8 +246,8 @@ struct CredentialValidityTests {
     @Test("Reports invalid credentials once the session has expired")
     func reportsExpiredSession() throws {
         let store = InMemoryCredentialsStore()
-        try storedCredentials(in: store, sessionExpiryDate: .distantPast)
-        let (client, _) = makeClient(transport: MockAuthTransport(), store: store)
+        try storeCredentials(in: store, sessionExpiryDate: .distantPast)
+        let (client, _) = makeClient(hooks: MockAuthRequestHooks(), store: store)
 
         #expect(client.hasValidCredentials == false)
     }
@@ -302,82 +255,118 @@ struct CredentialValidityTests {
 
 @Suite("Token refresh")
 struct TokenRefreshTests {
-    @Test("Authorizes the token endpoint with the session token, not the JWT")
-    func authorizesWithSessionToken() async throws {
+    @Test("Refreshes using the session token, never the stored JWT")
+    func refreshesWithSessionToken() async throws {
         let store = InMemoryCredentialsStore()
-        try storedCredentials(in: store)
-        let transport = MockAuthTransport(responses: [
-            paths.token: [.authenticated(status: 200, json: #"{"token":"new.jwt.token"}"#)]
-        ])
-        let (client, _) = makeClient(transport: transport, store: store)
+        try storeCredentials(in: store)
+        let hooks = MockAuthRequestHooks().stub(.issueToken, with: .success(MockAuthRequestHooks.credentials()))
+        let (client, _) = makeClient(hooks: hooks, store: store)
 
         _ = await client.refreshToken()
 
-        let request = try #require(transport.requests(forPath: paths.token).first)
-        #expect(request.header("Authorization") == "Bearer stored-session-token")
+        #expect(hooks.lastCall(.issueToken)?.sessionToken == "stored-session-token")
     }
 
-    @Test("Refreshes before signing a request when the auth token is about to expire")
-    func refreshesBeforeSigning() async throws {
+    @Test("Carries the known session expiry across a refresh")
+    func carriesSessionExpiry() async throws {
         let store = InMemoryCredentialsStore()
-        try storedCredentials(in: store, authTokenExpiryDate: Date.now.addingTimeInterval(60))
-        let transport = MockAuthTransport(responses: [
-            paths.token: [
-                .authenticated(status: 200, json: #"{"token":"x"}"#, authToken: "refreshed.jwt.token")
-            ],
-            paths.session: [
-                .init(
-                    status: 200,
-                    json: """
-                        {"session":{"expires_at":"2026-08-12T12:08:28.382Z",
-                        "created_at":"2026-08-05T12:08:28.382Z","updated_at":"2026-08-05T12:08:28.382Z"},
-                        "user":\(userJSON)}
-                        """,
-                )
-            ],
-        ])
-        let (client, _) = makeClient(transport: transport, store: store)
+        let existing = try storeCredentials(in: store)
+        let hooks = MockAuthRequestHooks().stub(.issueToken, with: .success(MockAuthRequestHooks.credentials()))
+        let (client, _) = makeClient(hooks: hooks, store: store)
 
-        _ = await client.session()
+        _ = await client.refreshToken()
 
-        #expect(transport.requests(forPath: paths.token).count == 1)
-        let sessionRequest = try #require(transport.requests(forPath: paths.session).first)
-        #expect(sessionRequest.header("Authorization") == "Bearer refreshed.jwt.token")
-    }
-
-    @Test("Does not refresh when the auth token is still fresh")
-    func doesNotRefreshWhenFresh() async throws {
-        let store = InMemoryCredentialsStore()
-        try storedCredentials(in: store)
-        let transport = MockAuthTransport(responses: [
-            paths.session: [
-                .init(
-                    status: 200,
-                    json: """
-                        {"session":{"expires_at":"2026-08-12T12:08:28.382Z",
-                        "created_at":"2026-08-05T12:08:28.382Z","updated_at":"2026-08-05T12:08:28.382Z"},
-                        "user":\(userJSON)}
-                        """,
-                )
-            ]
-        ])
-        let (client, _) = makeClient(transport: transport, store: store)
-
-        _ = await client.session()
-
-        #expect(transport.requests(forPath: paths.token).isEmpty)
+        #expect(try store.credentials(forKey: credentialsKey)?.sessionExpiryDate == existing.sessionExpiryDate)
     }
 
     @Test("Deletes credentials when the refresh is rejected")
     func deletesCredentialsOnRejectedRefresh() async throws {
         let store = InMemoryCredentialsStore()
-        try storedCredentials(in: store)
-        let transport = MockAuthTransport(responses: [paths.token: [.init(status: 401, json: "{}")]])
-        let (client, _) = makeClient(transport: transport, store: store)
+        try storeCredentials(in: store)
+        let hooks = MockAuthRequestHooks().stub(.issueToken, with: .failure(.init(status: 401)))
+        let (client, _) = makeClient(hooks: hooks, store: store)
 
         _ = await client.refreshToken()
 
         #expect(try store.credentials(forKey: credentialsKey) == nil)
+    }
+
+    @Test("Keeps credentials when the refresh fails for a non-auth reason")
+    func keepsCredentialsOnRefreshServerError() async throws {
+        let store = InMemoryCredentialsStore()
+        try storeCredentials(in: store)
+        let hooks = MockAuthRequestHooks().stub(.issueToken, with: .failure(.init(status: 503)))
+        let (client, _) = makeClient(hooks: hooks, store: store)
+
+        _ = await client.refreshToken()
+
+        #expect(try store.credentials(forKey: credentialsKey) != nil)
+    }
+}
+
+@Suite("Valid auth token")
+struct ValidAuthTokenTests {
+    @Test("Returns the stored token without refreshing when it is fresh")
+    func returnsStoredTokenWhenFresh() async throws {
+        let store = InMemoryCredentialsStore()
+        try storeCredentials(in: store)
+        let hooks = MockAuthRequestHooks()
+        let (client, _) = makeClient(hooks: hooks, store: store)
+
+        #expect(await client.validAuthToken() == "stored.auth.token")
+        #expect(hooks.callCount(.issueToken) == 0)
+    }
+
+    @Test("Refreshes first when the auth token is about to expire")
+    func refreshesWhenExpiring() async throws {
+        let store = InMemoryCredentialsStore()
+        try storeCredentials(in: store, authTokenExpiryDate: Date.now.addingTimeInterval(60))
+        let hooks = MockAuthRequestHooks()
+            .stub(.issueToken, with: .success(MockAuthRequestHooks.credentials(authToken: "refreshed.jwt.token")))
+        let (client, _) = makeClient(hooks: hooks, store: store)
+
+        #expect(await client.validAuthToken() == "refreshed.jwt.token")
+        #expect(hooks.callCount(.issueToken) == 1)
+    }
+
+    @Test("Refreshes first when the session is due for an update")
+    func refreshesWhenSessionStale() async throws {
+        let store = InMemoryCredentialsStore()
+        try storeCredentials(in: store, lastSessionUpdate: Date.now.addingTimeInterval(-90_000))
+        let hooks = MockAuthRequestHooks()
+            .stub(.issueToken, with: .success(MockAuthRequestHooks.credentials(authToken: "refreshed.jwt.token")))
+        let (client, _) = makeClient(hooks: hooks, store: store)
+
+        #expect(await client.validAuthToken() == "refreshed.jwt.token")
+    }
+
+    @Test("Returns nothing and clears credentials once the session has expired")
+    func clearsOnExpiredSession() async throws {
+        let store = InMemoryCredentialsStore()
+        try storeCredentials(in: store, sessionExpiryDate: .distantPast)
+        let hooks = MockAuthRequestHooks()
+        let (client, _) = makeClient(hooks: hooks, store: store)
+
+        #expect(await client.validAuthToken() == nil)
+        #expect(try store.credentials(forKey: credentialsKey) == nil)
+        #expect(hooks.callCount(.issueToken) == 0)
+    }
+
+    @Test("Returns nothing when nothing is stored")
+    func returnsNothingWithoutCredentials() async {
+        let (client, _) = makeClient(hooks: MockAuthRequestHooks())
+
+        #expect(await client.validAuthToken() == nil)
+    }
+
+    @Test("Returns nothing when the refresh fails")
+    func returnsNothingWhenRefreshFails() async throws {
+        let store = InMemoryCredentialsStore()
+        try storeCredentials(in: store, authTokenExpiryDate: Date.now.addingTimeInterval(60))
+        let hooks = MockAuthRequestHooks().stub(.issueToken, with: .failure(.init(status: 401)))
+        let (client, _) = makeClient(hooks: hooks, store: store)
+
+        #expect(await client.validAuthToken() == nil)
     }
 }
 
@@ -386,9 +375,9 @@ struct SignOutTests {
     @Test("Clears the stored credentials")
     func clearsCredentials() async throws {
         let store = InMemoryCredentialsStore()
-        try storedCredentials(in: store)
-        let transport = MockAuthTransport(responses: [paths.signOut: [.init(status: 200, json: "{}")]])
-        let (client, _) = makeClient(transport: transport, store: store)
+        try storeCredentials(in: store)
+        let hooks = MockAuthRequestHooks().stubSignOut(.success(()))
+        let (client, _) = makeClient(hooks: hooks, store: store)
 
         let result = await client.signOut()
 
@@ -396,12 +385,12 @@ struct SignOutTests {
         #expect(try store.credentials(forKey: credentialsKey) == nil)
     }
 
-    @Test("Clears credentials even when the server is unreachable")
+    @Test("Clears credentials even when the server rejects the request")
     func clearsCredentialsWhenServerFails() async throws {
         let store = InMemoryCredentialsStore()
-        try storedCredentials(in: store)
-        let transport = MockAuthTransport(fallback: .init(status: 503, json: "{}"))
-        let (client, _) = makeClient(transport: transport, store: store)
+        try storeCredentials(in: store)
+        let hooks = MockAuthRequestHooks().stubSignOut(.failure(.init(status: 503)))
+        let (client, _) = makeClient(hooks: hooks, store: store)
 
         _ = await client.signOut()
 
@@ -409,65 +398,90 @@ struct SignOutTests {
     }
 }
 
-@Suite("Request decoration")
-struct RequestDecorationTests {
-    @Test("Sends the configured origin scheme")
-    func sendsOrigin() async throws {
-        let store = InMemoryCredentialsStore()
-        try storedCredentials(in: store)
-        let transport = MockAuthTransport(responses: [paths.session: [.init(status: 401, json: "{}")]])
-        let (client, _) = makeClient(transport: transport, store: store)
+@Suite("Credential headers")
+struct CredentialHeadersTests {
+    private static let headers = [
+        "set-auth-token": "header.payload.signature",
+        "set-auth-token-expiry": "604800",
+        "set-session-token": "session-token",
+        "set-session-update-age": "86400",
+    ]
 
-        _ = await client.session()
+    @Test("Parses the four headers the server writes")
+    func parsesHeaders() throws {
+        let parsed = try #require(AuthCredentialHeaders(headers: Self.headers))
 
-        let request = try #require(transport.requests(forPath: paths.session).first)
-        #expect(request.header("Origin") == "testapp://")
+        #expect(parsed.authToken == "header.payload.signature")
+        #expect(parsed.authTokenExpiresInSeconds == 604_800)
+        #expect(parsed.sessionToken == "session-token")
+        #expect(parsed.sessionUpdateAgeSeconds == 86_400)
     }
 
-    @Test("Sends the session cookie only when configured to")
-    func sendsSessionCookieWhenConfigured() async throws {
-        let body =
-            #"{"session":{"expires_at":"2026-08-12T12:08:28.382Z","created_at":"2026-08-05T12:08:28.382Z","updated_at":"2026-08-05T12:08:28.382Z"},"user":\#(userJSON)}"#
+    @Test("Matches header names case-insensitively")
+    func matchesCaseInsensitively() {
+        let shouted = Dictionary(uniqueKeysWithValues: Self.headers.map { ($0.key.uppercased(), $0.value) })
 
-        for sendsCookie in [true, false] {
-            let store = InMemoryCredentialsStore()
-            try storedCredentials(in: store)
-            let transport = MockAuthTransport(responses: [paths.session: [.init(status: 200, json: body)]])
-            let (client, _) = makeClient(transport: transport, store: store, sendsSessionCookie: sendsCookie)
+        #expect(AuthCredentialHeaders(headers: shouted) != nil)
+    }
 
-            _ = await client.session()
+    @Test("Returns nil when a header is missing", arguments: Array(Self.headers.keys))
+    func returnsNilWhenHeaderMissing(missing: String) {
+        var headers = Self.headers
+        headers.removeValue(forKey: missing)
 
-            let request = try #require(transport.requests(forPath: paths.session).first)
-            let cookie = request.header("Cookie")
-            #expect((cookie?.contains("better-auth.session_token=stored-session-token") ?? false) == sendsCookie)
-        }
+        #expect(AuthCredentialHeaders(headers: headers) == nil)
+    }
+
+    @Test("Returns nil when a numeric header is not a number")
+    func returnsNilForNonNumeric() {
+        var headers = Self.headers
+        headers["set-auth-token-expiry"] = "soon"
+
+        #expect(AuthCredentialHeaders(headers: headers) == nil)
+    }
+
+    @Test("Turns headers into credentials that expire after the advertised lifetime")
+    func buildsCredentials() throws {
+        let parsed = try #require(AuthCredentialHeaders(headers: Self.headers))
+
+        let credentials = parsed.credentials()
+
+        #expect(credentials.authTokenHasExpired == false)
+        #expect(credentials.authTokenExpiryDate.timeIntervalSinceNow > 604_000)
+        #expect(credentials.sessionExpiryDate == nil)
     }
 }
 
-@Suite("Auth paths")
-struct AuthPathsTests {
-    @Test("Builds the endpoints under the configured base path")
-    func buildsEndpoints() {
-        let paths = AuthPaths(basePath: "/api/auth")
+@Suite("Error body")
+struct ErrorBodyTests {
+    @Test("Extracts the code and field-level validations")
+    func extractsValidations() {
+        let body = Data(
+            """
+            {"message":"Invalid payload","code":"INVALID_PAYLOAD","context":{"validations":[
+              {"code":"too_small","path":["password"],"message":"Too short"}
+            ]}}
+            """.utf8
+        )
 
-        #expect(paths.signUp == "/api/auth/sign-up/email")
-        #expect(paths.signIn == "/api/auth/sign-in/email")
-        #expect(paths.session == "/api/auth/session")
-        #expect(paths.token == "/api/auth/token")
+        let failure = AuthErrorBody.failure(status: 400, body: body)
+
+        #expect(failure.status == 400)
+        #expect(failure.code == "INVALID_PAYLOAD")
+        #expect(failure.validations.first?.field == "password")
     }
 
-    @Test("Tolerates a trailing slash on the base path")
-    func tolerationsTrailingSlash() {
-        #expect(AuthPaths(basePath: "/api/auth/").token == "/api/auth/token")
+    @Test("Falls back to the bare status when the body is not the expected envelope")
+    func fallsBackForUnexpectedBody() {
+        let failure = AuthErrorBody.failure(status: 500, body: Data("not json".utf8))
+
+        #expect(failure.status == 500)
+        #expect(failure.code == nil)
+        #expect(failure.validations.isEmpty)
     }
 
-    @Test("Matches the token path, ignoring a query string")
-    func matchesTokenPath() {
-        let paths = AuthPaths(basePath: "/api/auth")
-
-        #expect(paths.isTokenPath("/api/auth/token"))
-        #expect(paths.isTokenPath("/api/auth/token?refresh=1"))
-        #expect(paths.isTokenPath("/api/auth/session") == false)
-        #expect(paths.isTokenPath(nil) == false)
+    @Test("Falls back when there is no body at all")
+    func fallsBackForMissingBody() {
+        #expect(AuthErrorBody.failure(status: 503, body: nil).code == nil)
     }
 }

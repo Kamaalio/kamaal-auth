@@ -20,48 +20,12 @@ struct CredentialsTests {
         #expect(decoded == credentials)
     }
 
-    @Test("Decodes the legacy expiryDate key so an upgrade does not sign the user out")
-    func decodesLegacyExpiryDate() throws {
-        let legacy = """
+    @Test("Rejects credentials stored in an older shape, so the app re-authenticates once")
+    func rejectsOlderShape() {
+        let older = """
             {
               "authToken": "token",
               "expiryDate": 800000000,
-              "sessionToken": "session",
-              "sessionUpdateAge": 86400,
-              "lastSessionUpdate": 700000000
-            }
-            """
-
-        let decoded = try JSONDecoder().decode(Credentials.self, from: Data(legacy.utf8))
-
-        #expect(decoded.authToken == "token")
-        #expect(decoded.authTokenExpiryDate == Date(timeIntervalSinceReferenceDate: 800_000_000))
-        #expect(decoded.sessionExpiryDate == nil)
-    }
-
-    @Test("Prefers the current key when both are present")
-    func prefersCurrentKey() throws {
-        let both = """
-            {
-              "authToken": "token",
-              "authTokenExpiryDate": 900000000,
-              "expiryDate": 800000000,
-              "sessionToken": "session",
-              "sessionUpdateAge": 86400,
-              "lastSessionUpdate": 700000000
-            }
-            """
-
-        let decoded = try JSONDecoder().decode(Credentials.self, from: Data(both.utf8))
-
-        #expect(decoded.authTokenExpiryDate == Date(timeIntervalSinceReferenceDate: 900_000_000))
-    }
-
-    @Test("Fails when neither expiry key is present")
-    func failsWithoutAnyExpiry() {
-        let broken = """
-            {
-              "authToken": "token",
               "sessionToken": "session",
               "sessionUpdateAge": 86400,
               "lastSessionUpdate": 700000000
@@ -69,7 +33,7 @@ struct CredentialsTests {
             """
 
         #expect(throws: (any Error).self) {
-            try JSONDecoder().decode(Credentials.self, from: Data(broken.utf8))
+            try JSONDecoder().decode(Credentials.self, from: Data(older.utf8))
         }
     }
 

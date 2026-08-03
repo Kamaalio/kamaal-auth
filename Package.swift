@@ -1,4 +1,4 @@
-// swift-tools-version: 6.4
+// swift-tools-version: 6.3.3
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -18,9 +18,7 @@ let package = Package(
         .library(name: "KamaalAuthTestSupport", targets: ["KamaalAuthTestSupport"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/Kamaalio/KamaalSwift", .upToNextMajor(from: "3.5.0")),
-        .package(url: "https://github.com/apple/swift-http-types", .upToNextMajor(from: "1.6.0")),
-        .package(url: "https://github.com/apple/swift-openapi-runtime", .upToNextMajor(from: "1.12.0")),
+        .package(url: "https://github.com/Kamaalio/KamaalSwift", .upToNextMajor(from: "3.5.0"))
     ],
     targets: [
         .target(
@@ -35,8 +33,6 @@ let package = Package(
         .target(
             name: "KamaalAuthClient",
             dependencies: [
-                .product(name: "HTTPTypes", package: "swift-http-types"),
-                .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
                 .product(name: "KamaalLogger", package: "KamaalSwift"),
                 .product(name: "KamaalExtensions", package: "KamaalSwift"),
                 "KamaalAuthCore",
@@ -46,8 +42,6 @@ let package = Package(
         .target(
             name: "KamaalAuthTestSupport",
             dependencies: [
-                .product(name: "HTTPTypes", package: "swift-http-types"),
-                .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
                 "KamaalAuthCore",
                 "KamaalAuthClient",
             ],
@@ -61,8 +55,6 @@ let package = Package(
         .testTarget(
             name: "KamaalAuthClientTests",
             dependencies: [
-                .product(name: "HTTPTypes", package: "swift-http-types"),
-                .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
                 "KamaalAuthClient",
                 "KamaalAuthTestSupport",
             ],

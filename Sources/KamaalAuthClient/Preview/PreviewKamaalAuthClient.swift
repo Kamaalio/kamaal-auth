@@ -16,7 +16,7 @@ public enum PreviewAuthOutcome: Sendable {
     case validation(issues: [AuthValidationIssue])
 }
 
-/// A client for SwiftUI previews and UI tests that performs no network requests and never touches the Keychain.
+/// A client for SwiftUI previews and UI tests that performs no requests and never touches the Keychain.
 public struct PreviewKamaalAuthClient: KamaalAuthClient {
     public let outcome: PreviewAuthOutcome
     public let hasValidCredentials: Bool
@@ -40,6 +40,10 @@ public struct PreviewKamaalAuthClient: KamaalAuthClient {
         createdAt: .now,
         expiresAt: .distantFuture,
     )
+
+    public func validAuthToken() async -> String? {
+        hasValidCredentials ? "preview.auth.token" : nil
+    }
 
     public func refreshToken() async -> Result<Void, SessionErrors> {
         switch outcome {
