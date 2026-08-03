@@ -1,7 +1,6 @@
 # kamaal-auth
 
-Shared auth stack for [Kowalski](https://github.com/kamaal111/Kowalski) and [TCG](https://github.com/kamaal111/TCG), so an
-improvement lands once instead of twice.
+Shared auth stack for multiple apps, so an improvement lands once instead of twice.
 
 One repo, two published artifacts:
 
@@ -11,8 +10,8 @@ One repo, two published artifacts:
 | Swift package | `KamaalAuth` (at the repo root)                  | `KamaalAuthCore`, `KamaalAuthClient` |
 
 > **Not built yet:** `KamaalAuthUI` — the shared `@Observable` auth model, the auth-gate view modifier, and the
-> combined sign-in/sign-up screen, ported from TCG with its components kept inside the package. Until it lands, apps
-> keep their own auth screens on top of `KamaalAuthClient`.
+> combined sign-in/sign-up screen, with its components kept inside the package. Until it lands, apps keep their own
+> auth screens on top of `KamaalAuthClient`.
 
 ## Two things this package deliberately does not own
 
