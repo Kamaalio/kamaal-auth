@@ -28,18 +28,22 @@ import { type AuthSchemas, buildAuthSchemas } from '../schemas/responses.js';
 import { buildAuthRoutes } from './routes.js';
 import { bearerTokenFrom, getCredentialKind, toISO8601String } from '../utils/index.js';
 
-export interface SessionExtras<ExtrasShape extends z.ZodRawShape> {
+export interface SessionExtras<ExtrasShape extends z.ZodRawShape, TLocals = unknown> {
   /** Merged into the user object of every session and auth response, and into the OpenAPI document. */
   schema: z.ZodObject<ExtrasShape>;
   /** Return type is pinned to `schema`, so the two cannot drift apart. */
-  resolve: (c: AuthHookContext, args: { userId: string }) => Promise<z.infer<z.ZodObject<ExtrasShape>>>;
+  resolve: (c: AuthHookContext<TLocals>, args: { userId: string }) => Promise<z.infer<z.ZodObject<ExtrasShape>>>;
 }
 
-export interface AuthRouteDeps<ExtrasShape extends z.ZodRawShape> {
+export interface AuthRouteDeps<
+  ExtrasShape extends z.ZodRawShape,
+  TLocals = unknown,
+  E extends AuthHonoEnv = AuthHonoEnv,
+> {
   schemas: AuthSchemas<ExtrasShape>;
-  requireSessionMiddleware: MiddlewareHandler<AuthHonoEnv>;
-  getSession: (c: Context<AuthHonoEnv>) => AuthSessionResponse;
-  hookContext: (c: Context<AuthHonoEnv>) => Promise<AuthHookContext>;
+  requireSessionMiddleware: MiddlewareHandler<E>;
+  getSession: (c: Context<E>) => AuthSessionResponse;
+  hookContext: (c: Context<E>) => Promise<AuthHookContext<TLocals>>;
   config: AuthConfig;
 }
 
@@ -48,8 +52,10 @@ export interface CreateAuthModuleOptions<
   TSignUpInput extends EmailPasswordSignUpInput,
   TSignInInput extends EmailPasswordSignInInput,
   ExtrasShape extends z.ZodRawShape,
+  TLocals,
+  E extends AuthHonoEnv,
 > {
-  hooks: AuthHooks<TUser, TSignUpInput, TSignInInput>;
+  hooks: AuthHooks<TUser, TSignUpInput, TSignInInput, TLocals>;
   config: AuthConfig;
   /**
    * Router to register the auth routes on.
@@ -57,10 +63,11 @@ export interface CreateAuthModuleOptions<
    * Supply the app's own router so its `defaultHook` — and therefore its validation-error envelope — governs these
    * routes too. Without one the package builds its own, which is only right for an app that has no factory of its own.
    */
-  router?: OpenAPIHono<AuthHonoEnv>;
-  logger?: (c: Context<AuthHonoEnv>) => AuthLogger;
-  locals?: (c: Context<AuthHonoEnv>) => unknown;
-  requestId?: (c: Context<AuthHonoEnv>) => string | undefined;
+  router?: OpenAPIHono<E>;
+  logger?: (c: Context<E>) => AuthLogger;
+  /** Per-request state handed to every hook as `c.locals`. Its type flows through to the hooks. */
+  locals?: (c: Context<E>) => TLocals;
+  requestId?: (c: Context<E>) => string | undefined;
   /**
    * Payload schemas. Override when the corresponding hook input is wider than the package default, so the router
    * validates every field the hook expects.
@@ -69,16 +76,16 @@ export interface CreateAuthModuleOptions<
     signUp?: z.ZodType<TSignUpInput>;
     signIn?: z.ZodType<TSignInInput>;
   };
-  sessionExtras?: SessionExtras<ExtrasShape>;
+  sessionExtras?: SessionExtras<ExtrasShape, TLocals>;
   /** Mount app-owned routes on the same router, with the package's schemas and middleware handed back. */
-  extraRoutes?: (router: OpenAPIHono<AuthHonoEnv>, deps: AuthRouteDeps<ExtrasShape>) => void;
+  extraRoutes?: (router: OpenAPIHono<E>, deps: AuthRouteDeps<ExtrasShape, TLocals, E>) => void;
 }
 
-export interface AuthModule<ExtrasShape extends z.ZodRawShape> {
-  router: OpenAPIHono<AuthHonoEnv>;
-  requireSessionMiddleware: MiddlewareHandler<AuthHonoEnv>;
-  getSession: (c: Context<AuthHonoEnv>) => AuthSessionResponse;
-  hookContext: (c: Context<AuthHonoEnv>) => Promise<AuthHookContext>;
+export interface AuthModule<ExtrasShape extends z.ZodRawShape, TLocals = unknown, E extends AuthHonoEnv = AuthHonoEnv> {
+  router: OpenAPIHono<E>;
+  requireSessionMiddleware: MiddlewareHandler<E>;
+  getSession: (c: Context<E>) => AuthSessionResponse;
+  hookContext: (c: Context<E>) => Promise<AuthHookContext<TLocals>>;
   schemas: AuthSchemas<ExtrasShape>;
   config: AuthConfig;
 }
@@ -88,23 +95,27 @@ export function createAuthModule<
   TSignUpInput extends EmailPasswordSignUpInput,
   TSignInInput extends EmailPasswordSignInInput,
   ExtrasShape extends z.ZodRawShape = z.ZodRawShape,
->(options: CreateAuthModuleOptions<TUser, TSignUpInput, TSignInInput, ExtrasShape>): AuthModule<ExtrasShape> {
+  TLocals = unknown,
+  E extends AuthHonoEnv = AuthHonoEnv,
+>(
+  options: CreateAuthModuleOptions<TUser, TSignUpInput, TSignInInput, ExtrasShape, TLocals, E>,
+): AuthModule<ExtrasShape, TLocals, E> {
   const { hooks, config } = options;
   const render = config.errorResponse ?? defaultAuthErrorRenderer;
   const errorStatuses = { ...AUTH_ERROR_STATUSES, ...config.errorStatuses };
   const schemas = buildAuthSchemas<ExtrasShape>(options.sessionExtras?.schema.shape);
   const remoteJwks = createRemoteJWKSet(config.jwt.jwksUrl);
 
-  const requestIdOf = (c: Context<AuthHonoEnv>) => options.requestId?.(c);
-  const loggerOf = (c: Context<AuthHonoEnv>) => options.logger?.(c) ?? noopAuthLogger;
+  const requestIdOf = (c: Context<E>) => options.requestId?.(c);
+  const loggerOf = (c: Context<E>) => options.logger?.(c) ?? noopAuthLogger;
 
-  async function hookContext(c: Context<AuthHonoEnv>): Promise<AuthHookContext> {
+  async function hookContext(c: Context<E>): Promise<AuthHookContext<TLocals>> {
     return {
       request: await cloneRawRequest(c.req),
       headers: c.req.raw.headers,
       requestId: requestIdOf(c),
       logger: loggerOf(c),
-      locals: options.locals?.(c),
+      locals: options.locals?.(c) as TLocals,
     };
   }
 
@@ -118,7 +129,7 @@ export function createAuthModule<
   }
 
   async function withExtras(
-    c: AuthHookContext,
+    c: AuthHookContext<TLocals>,
     user: AuthSessionResponse['user'],
   ): Promise<AuthSessionResponse['user']> {
     const sessionExtras = options.sessionExtras;
@@ -129,14 +140,14 @@ export function createAuthModule<
     return { ...user, ...extras };
   }
 
-  const requireSessionMiddleware: MiddlewareHandler<AuthHonoEnv> = async (c, next) => {
+  const requireSessionMiddleware: MiddlewareHandler<E> = async (c, next) => {
     const session = await resolveSession(c, { hooks, config, render, remoteJwks, hookContext });
     const hookCtx = await hookContext(c);
     c.set(AUTH_SESSION_CONTEXT_KEY, { ...session, user: await withExtras(hookCtx, session.user) });
     await next();
   };
 
-  function getSession(c: Context<AuthHonoEnv>): AuthSessionResponse {
+  function getSession(c: Context<E>): AuthSessionResponse {
     const session = c.get(AUTH_SESSION_CONTEXT_KEY);
     if (session == null) {
       throw new SessionNotFound({ requestId: requestIdOf(c), render });
@@ -165,7 +176,7 @@ export function createAuthModule<
 
   const router =
     options.router ??
-    new OpenAPIHono<AuthHonoEnv>({
+    new OpenAPIHono<E>({
       defaultHook: (result, c) => {
         if (result.success) return;
 

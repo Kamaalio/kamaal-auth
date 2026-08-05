@@ -6,13 +6,17 @@ import type { AuthLogger } from '../logging/index.js';
  * `request` is a clone of the incoming raw request, so a hook is free to forward it straight to an auth library's
  * handler without the router losing its own copy of the body.
  */
-export interface AuthHookContext {
+export interface AuthHookContext<TLocals = unknown> {
   readonly request: Request;
   readonly headers: Headers;
   readonly requestId: string | undefined;
   readonly logger: AuthLogger;
-  /** App-owned per-request state, supplied by `createAuthModule({ locals })`. Opaque to this package. */
-  readonly locals: unknown;
+  /**
+   * App-owned per-request state, supplied by `createAuthModule({ locals })`.
+   *
+   * Typed by the consumer rather than by this package, so hooks reach their database or auth instance without a cast.
+   */
+  readonly locals: TLocals;
 }
 
 export interface AuthUser {
@@ -109,10 +113,11 @@ export interface AuthHooks<
   TUser extends AuthUser = AuthUser,
   TSignUpInput extends EmailPasswordSignUpInput = EmailPasswordSignUpInput,
   TSignInInput extends EmailPasswordSignInInput = EmailPasswordSignInInput,
+  TLocals = unknown,
 > {
-  signUp(c: AuthHookContext, input: TSignUpInput): Promise<AuthHookResult<AuthenticatedResult<TUser>>>;
+  signUp(c: AuthHookContext<TLocals>, input: TSignUpInput): Promise<AuthHookResult<AuthenticatedResult<TUser>>>;
 
-  signIn(c: AuthHookContext, input: TSignInInput): Promise<AuthHookResult<AuthenticatedResult<TUser>>>;
+  signIn(c: AuthHookContext<TLocals>, input: TSignInInput): Promise<AuthHookResult<AuthenticatedResult<TUser>>>;
 
   /**
    * Ends the session.
@@ -120,24 +125,24 @@ export interface AuthHooks<
    * Returned headers are merged into the 200 response, which is how an auth library's session-clearing cookie
    * reaches a cookie-based client. Sign-out is expected to succeed even with no active session.
    */
-  signOut(c: AuthHookContext): Promise<AuthHookResult<SignOutResult>>;
+  signOut(c: AuthHookContext<TLocals>): Promise<AuthHookResult<SignOutResult>>;
 
   /** Cookie or opaque-token session lookup. A `null` value means "no session", which becomes a 401. */
-  getSession(c: AuthHookContext): Promise<AuthHookResult<SessionLookupResult<TUser> | null>>;
+  getSession(c: AuthHookContext<TLocals>): Promise<AuthHookResult<SessionLookupResult<TUser> | null>>;
 
   /** Issue or refresh the JWT for the bearer session token on the request. */
-  issueToken(c: AuthHookContext): Promise<AuthHookResult<IssuedToken>>;
+  issueToken(c: AuthHookContext<TLocals>): Promise<AuthHookResult<IssuedToken>>;
 
   /** Serves the public JWKS document. Returned raw because consumers typically proxy their auth library. */
-  jwks(c: AuthHookContext): Promise<Response>;
+  jwks(c: AuthHookContext<TLocals>): Promise<Response>;
 
   /**
    * Local-JWKS escape hatch, used instead of the remote JWKS set when `config.isTest` is on.
    *
    * This is what keeps key storage in the consumer: the app reads its own `jwks` table and hands back the keys.
    */
-  verificationKeys?(c: AuthHookContext): Promise<VerificationKeys>;
+  verificationKeys?(c: AuthHookContext<TLocals>): Promise<VerificationKeys>;
 
   /** Catch-all for auth-library endpoints the package does not model. Mounted last, on GET and POST. */
-  fallback?(c: AuthHookContext): Promise<Response>;
+  fallback?(c: AuthHookContext<TLocals>): Promise<Response>;
 }

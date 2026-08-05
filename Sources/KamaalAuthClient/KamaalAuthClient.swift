@@ -84,7 +84,11 @@ public struct KamaalAuthClientImpl: KamaalAuthClient {
 
         switch await hooks.signIn(payload) {
         case .success(let headers):
-            tokens.persist(headers)
+            do {
+                try tokens.persist(headers)
+            } catch {
+                return .failure(.credentialsUnavailable(cause: error))
+            }
             logger.info("Sign in completed and the session details were saved.")
 
             return .success(())
@@ -106,7 +110,11 @@ public struct KamaalAuthClientImpl: KamaalAuthClient {
     public func signUp(with payload: SignUpPayload) async -> Result<Void, SignUpErrors> {
         switch await hooks.signUp(payload) {
         case .success(let headers):
-            tokens.persist(headers)
+            do {
+                try tokens.persist(headers)
+            } catch {
+                return .failure(.credentialsUnavailable(cause: error))
+            }
             logger.info("Account creation completed and the session details were saved.")
 
             return .success(())

@@ -17,7 +17,8 @@ export function defineAuthHooks<
   TUser extends AuthUser,
   TSignUpInput extends EmailPasswordSignUpInput,
   TSignInInput extends EmailPasswordSignInInput,
-  H extends AuthHooks<TUser, TSignUpInput, TSignInInput>,
+  TLocals,
+  H extends AuthHooks<TUser, TSignUpInput, TSignInInput, TLocals>,
 >(hooks: H): H {
   return hooks;
 }

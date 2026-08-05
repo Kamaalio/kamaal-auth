@@ -67,7 +67,11 @@ public struct AuthTokenProvider: Sendable {
 
         switch await issueToken(credentials.sessionToken) {
         case .success(let headers):
-            persist(headers, keepingSessionExpiry: credentials.sessionExpiryDate)
+            do {
+                try persist(headers, keepingSessionExpiry: credentials.sessionExpiryDate)
+            } catch {
+                return .failure(.unknown(status: 500, payload: nil, cause: error))
+            }
             logger.info("Authentication token refresh completed; credential=session_token")
 
             return .success(())
@@ -81,11 +85,16 @@ public struct AuthTokenProvider: Sendable {
         }
     }
 
-    func persist(_ headers: AuthCredentialHeaders, keepingSessionExpiry sessionExpiry: Date? = nil) {
+    /// Saves credentials, throwing on failure.
+    ///
+    /// Callers must surface this rather than swallow it: credentials that were not saved leave the user looking
+    /// signed in on this launch and signed out on the next, with no token in between.
+    func persist(_ headers: AuthCredentialHeaders, keepingSessionExpiry sessionExpiry: Date? = nil) throws {
         do {
             try store.store(headers.credentials(keepingSessionExpiry: sessionExpiry), forKey: key)
         } catch {
             logger.error("Couldn't save the credentials; reason=\(error)")
+            throw error
         }
     }
 

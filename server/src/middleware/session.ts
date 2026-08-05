@@ -52,17 +52,21 @@ const AuthJWTPayloadSchema = z
 
 const PublicJWKSchema = z.object({ kty: z.string() }).catchall(z.unknown());
 
-export interface SessionResolverOptions {
+/** Everything session resolution needs once a hook context already exists. Independent of the app's Hono env. */
+interface SessionResolverCore {
   hooks: AuthHooks;
   config: AuthConfig;
   render: AuthErrorRenderer;
   remoteJwks: JWTVerifyGetKey;
-  hookContext: (c: Context<AuthHonoEnv>) => Promise<AuthHookContext>;
 }
 
-export async function resolveSession(
-  c: Context<AuthHonoEnv>,
-  options: SessionResolverOptions,
+export interface SessionResolverOptions<E extends AuthHonoEnv = AuthHonoEnv> extends SessionResolverCore {
+  hookContext: (c: Context<E>) => Promise<AuthHookContext>;
+}
+
+export async function resolveSession<E extends AuthHonoEnv>(
+  c: Context<E>,
+  options: SessionResolverOptions<E>,
 ): Promise<AuthSessionResponse> {
   const existing = c.get(AUTH_SESSION_CONTEXT_KEY);
   if (existing != null) return existing;
@@ -77,7 +81,7 @@ export async function resolveSession(
 
 async function resolveSessionFromJwt(
   c: AuthHookContext,
-  options: SessionResolverOptions,
+  options: SessionResolverCore,
 ): Promise<AuthSessionResponse | null> {
   const token = bearerTokenFrom(c.headers);
   if (token == null) return null;
@@ -152,10 +156,7 @@ async function resolveSessionFromJwt(
   };
 }
 
-async function resolveSessionFromHook(
-  c: AuthHookContext,
-  options: SessionResolverOptions,
-): Promise<AuthSessionResponse> {
+async function resolveSessionFromHook(c: AuthHookContext, options: SessionResolverCore): Promise<AuthSessionResponse> {
   const result = await options.hooks.getSession(c);
   if (!result.ok || result.value == null) {
     c.logger.warn(
@@ -199,7 +200,7 @@ async function resolveSessionFromHook(
   };
 }
 
-async function getVerificationKeys(c: AuthHookContext, options: SessionResolverOptions): Promise<JWTVerifyGetKey> {
+async function getVerificationKeys(c: AuthHookContext, options: SessionResolverCore): Promise<JWTVerifyGetKey> {
   if (options.config.isTest !== true) return options.remoteJwks;
 
   const result = await options.hooks.verificationKeys?.(c);
