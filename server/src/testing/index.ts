@@ -185,7 +185,11 @@ export async function createInMemoryAuth(options: InMemoryAuthOptions = {}): Pro
       const sessionToken = resolveSessionToken(c);
       if (sessionToken != null) sessions.delete(sessionToken);
 
-      return { ok: true, value: undefined };
+      // Mirrors how a real auth library ends a cookie session: set the same cookie, already expired.
+      const headers = new Headers();
+      headers.append('set-cookie', `${SESSION_COOKIE_NAME}=; Path=/; Max-Age=0`);
+
+      return { ok: true, value: { headers } };
     },
 
     async getSession(c): Promise<AuthHookResult<SessionLookupResult<AuthUser> | null>> {

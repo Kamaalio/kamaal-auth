@@ -36,6 +36,7 @@ export {
   type EmailPasswordSignUpInput,
   type IssuedToken,
   type SessionLookupResult,
+  type SignOutResult,
   type VerificationKeys,
 } from './hooks/types.js';
 

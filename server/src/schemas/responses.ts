@@ -25,6 +25,19 @@ const BASE_USER_SHAPE = {
   }),
 } as const;
 
+/**
+ * Shared so the user block reads the same wherever it is embedded.
+ *
+ * Keys mirror the schema exactly; an example that drifts from its schema is worse than none.
+ */
+const EXAMPLE_USER = {
+  id: 'user_2f0b63e4b3a44df0b2f099b1c8f52765',
+  created_at: '2026-07-07T10:30:00.000Z',
+  email: 'test@example.com',
+  email_verified: false,
+  name: 'Test User',
+} as const;
+
 const SESSION_SHAPE = {
   expires_at: ApiCommonDatetimeShape.openapi({
     description: 'Session expiration timestamp',
@@ -65,6 +78,14 @@ export function buildAuthSchemas<ExtrasShape extends z.ZodRawShape>(extrasShape?
     .openapi('SessionResponse', {
       title: 'Session Response',
       description: 'Session response containing session and user information',
+      example: {
+        session: {
+          expires_at: '2025-10-12T12:08:28.382Z',
+          created_at: '2025-10-05T12:08:28.382Z',
+          updated_at: '2025-10-05T12:08:28.382Z',
+        },
+        user: EXAMPLE_USER,
+      },
     });
 
   const AuthResponseSchema = z
@@ -78,6 +99,7 @@ export function buildAuthSchemas<ExtrasShape extends z.ZodRawShape>(extrasShape?
     .openapi('AuthResponse', {
       title: 'Authentication Response',
       description: 'Successful authentication response containing an authentication token and user details',
+      example: { token: 'f21wcpz7Aokmlh2MB632MZpTgfruPc62', user: EXAMPLE_USER },
     });
 
   const TokenResponseSchema = z
@@ -93,5 +115,6 @@ function buildUserSchema<ExtrasShape extends z.ZodRawShape>(extrasShape?: Extras
   return z.object({ ...BASE_USER_SHAPE, ...(extrasShape ?? ({} as ExtrasShape)) }).openapi('UserSchema', {
     title: 'User',
     description: 'Authenticated user details',
+    example: EXAMPLE_USER,
   });
 }

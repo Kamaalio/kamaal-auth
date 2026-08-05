@@ -51,6 +51,13 @@ export interface CreateAuthModuleOptions<
 > {
   hooks: AuthHooks<TUser, TSignUpInput, TSignInInput>;
   config: AuthConfig;
+  /**
+   * Router to register the auth routes on.
+   *
+   * Supply the app's own router so its `defaultHook` — and therefore its validation-error envelope — governs these
+   * routes too. Without one the package builds its own, which is only right for an app that has no factory of its own.
+   */
+  router?: OpenAPIHono<AuthHonoEnv>;
   logger?: (c: Context<AuthHonoEnv>) => AuthLogger;
   locals?: (c: Context<AuthHonoEnv>) => unknown;
   requestId?: (c: Context<AuthHonoEnv>) => string | undefined;
@@ -156,22 +163,24 @@ export function createAuthModule<
     sessionMiddleware: requireSessionMiddleware,
   });
 
-  const router = new OpenAPIHono<AuthHonoEnv>({
-    defaultHook: (result, c) => {
-      if (result.success) return;
+  const router =
+    options.router ??
+    new OpenAPIHono<AuthHonoEnv>({
+      defaultHook: (result, c) => {
+        if (result.success) return;
 
-      throw new AuthHttpError(
-        {
-          status: STATUS_CODES.BAD_REQUEST,
-          code: 'INVALID_PAYLOAD',
-          message: 'Invalid payload',
-          context: { validations: result.error.issues },
-          requestId: requestIdOf(c),
-        },
-        render,
-      );
-    },
-  });
+        throw new AuthHttpError(
+          {
+            status: STATUS_CODES.BAD_REQUEST,
+            code: 'INVALID_PAYLOAD',
+            message: 'Invalid payload',
+            context: { validations: result.error.issues },
+            requestId: requestIdOf(c),
+          },
+          render,
+        );
+      },
+    });
 
   router.get(AUTH_ROUTE_PATHS.jwks, async c => hooks.jwks(await hookContext(c)));
 
@@ -219,7 +228,8 @@ export function createAuthModule<
       'Signed out successfully.',
     );
 
-    return c.json({}, { status: STATUS_CODES.OK });
+    // Carries through whatever the hook set, notably the auth library's expired session cookie.
+    return c.json({}, { status: STATUS_CODES.OK, headers: result.value.headers });
   });
 
   router.openapi(routes.session, c => c.json(getSession(c), { status: STATUS_CODES.OK }));
@@ -234,6 +244,7 @@ export function createAuthModule<
           outcome: 'failure',
           error_code: result.error.code,
           credential_kind: getCredentialKind(hookCtx.headers),
+          status_code: STATUS_CODES.UNAUTHORIZED,
         },
         'Authentication token request was rejected.',
       );

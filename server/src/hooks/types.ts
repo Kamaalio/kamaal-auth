@@ -83,6 +83,11 @@ export interface SessionLookupResult<TUser extends AuthUser> {
   session: AuthSession;
 }
 
+export interface SignOutResult {
+  /** Merged into the response. Typically carries the expired session cookie the auth library set. */
+  headers?: Headers | undefined;
+}
+
 export interface IssuedToken {
   token: string;
   expiresInSeconds?: number | undefined;
@@ -109,7 +114,13 @@ export interface AuthHooks<
 
   signIn(c: AuthHookContext, input: TSignInInput): Promise<AuthHookResult<AuthenticatedResult<TUser>>>;
 
-  signOut(c: AuthHookContext): Promise<AuthHookResult<void>>;
+  /**
+   * Ends the session.
+   *
+   * Returned headers are merged into the 200 response, which is how an auth library's session-clearing cookie
+   * reaches a cookie-based client. Sign-out is expected to succeed even with no active session.
+   */
+  signOut(c: AuthHookContext): Promise<AuthHookResult<SignOutResult>>;
 
   /** Cookie or opaque-token session lookup. A `null` value means "no session", which becomes a 401. */
   getSession(c: AuthHookContext): Promise<AuthHookResult<SessionLookupResult<TUser> | null>>;

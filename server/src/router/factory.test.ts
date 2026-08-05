@@ -235,6 +235,28 @@ describe('token', () => {
 });
 
 describe('sign out', () => {
+  it('forwards the headers the hook returned, so a cookie session actually ends', async () => {
+    const harness = await createHarness();
+    const credentials = parseCredentialHeaders((await signUp(harness)).headers);
+
+    const response = await harness.request('/sign-out', {
+      method: 'POST',
+      headers: { Cookie: `${SESSION_COOKIE_NAME}=${credentials?.sessionToken}` },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('set-cookie')).toContain(`${SESSION_COOKIE_NAME}=`);
+  });
+
+  it('succeeds with no active session', async () => {
+    const harness = await createHarness();
+
+    const response = await harness.request('/sign-out', { method: 'POST' });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({});
+  });
+
   it('invalidates the session', async () => {
     const harness = await createHarness();
     const credentials = parseCredentialHeaders((await signUp(harness)).headers);
@@ -344,6 +366,36 @@ describe('session extras', () => {
     const spec = await (await harness.app.request(`${ORIGIN}/spec.json`)).json();
 
     expect(Object.keys(spec.components.schemas.UserSchema.properties)).toContain('preferred_currency');
+  });
+});
+
+describe('consumer-supplied router', () => {
+  it("uses the consumer's defaultHook for validation failures", async () => {
+    const auth = await createInMemoryAuth();
+    const router = new OpenAPIHono<AuthHonoEnv>({
+      defaultHook: (result, c) => {
+        if (result.success) return;
+
+        return c.json({ message: 'App envelope', issues: result.error.issues.length }, 422);
+      },
+    });
+    const module = createAuthModule({ hooks: auth.hooks, config: auth.config, router });
+    const app = new OpenAPIHono<AuthHonoEnv>();
+    app.route(BASE_PATH, module.router);
+
+    const response = await app.request(
+      new Request(`${ORIGIN}${BASE_PATH}/sign-up/email`, jsonInit({ ...SIGN_UP_BODY, email: 'nope' })),
+    );
+
+    expect(response.status).toBe(422);
+    expect(await response.json()).toMatchObject({ message: 'App envelope' });
+  });
+
+  it('returns the same router instance it was given', async () => {
+    const auth = await createInMemoryAuth();
+    const router = new OpenAPIHono<AuthHonoEnv>();
+
+    expect(createAuthModule({ hooks: auth.hooks, config: auth.config, router }).router).toBe(router);
   });
 });
 
