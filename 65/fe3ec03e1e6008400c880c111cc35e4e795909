@@ -1,0 +1,37 @@
+Sources/KamaalAuthClient/AuthRequestHooks.swift
+  s_0024ba16579168::t_73fcb6ee958219 83
+  s_0024ba16579168::t_e7754c919acb1a 82
+Sources/KamaalAuthClient/AuthTokenProvider.swift
+  s_0024ba16579168::t_3e6b66791c09e7 68
+  s_0024ba16579168::t_267c87fd65eca1 20,25
+Sources/KamaalAuthClient/KamaalAuthClient.swift
+  s_0024ba16579168::t_07701fb52c6cb3 34-35
+Sources/KamaalAuthTestSupport/MockAuthRequestHooks.swift
+  s_0024ba16579168::t_e8692326b74d87 120-121
+  s_0024ba16579168::t_1cddd25a873174 95-96
+Tests/KamaalAuthClientTests/KamaalAuthClientTests.swift
+  s_0024ba16579168::t_2d4e97a2296cf4 258-259,267
+Tests/KamaalAuthOpenAPITests/MiddlewareTests.swift
+  s_0024ba16579168::t_372f5fd4409a7c 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "65fe3ec03e1e6008400c880c111cc35e4e795909",
+  "prompts": {},
+  "humans": {
+    "h_66e824d23aae73": {
+      "author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0024ba16579168": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d5edb93-832b-411e-b562-9ece49c6b9ac",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  }
+}
