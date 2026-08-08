@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# CoreSimulator devices are global to the logged-in macOS user. Serialize iOS
+# test runs across worktrees and agents to prevent concurrent access to the
+# shared simulator.
+lock_file="${TMPDIR:-/tmp}/kamaal-auth-ios-simulator-tests.lock"
+
+# CoreSimulator processes need write access outside the repository. When an
+# xcodebuild starts inside a filesystem sandbox, the simulator can launch
+# far enough for system apps such as PosterBoard to crash before xcodebuild
+# reports the underlying permission failure. Probe that access first so the
+# simulator is never started in a broken environment.
+simulator_directories=(
+    "$HOME/Library/Logs/CoreSimulator"
+    "$HOME/Library/Developer/CoreSimulator/Devices"
+)
+
+for directory in "${simulator_directories[@]}"; do
+    probe_file="$(mktemp "$directory/kamaal-auth-simulator-access.XXXXXX" 2>/dev/null || true)"
+
+    if [[ -z "$probe_file" ]]; then
+        cat >&2 <<'EOF'
+CoreSimulator is not writable from the current environment.
+Re-run the enclosing just recipe outside the filesystem sandbox.
+EOF
+        exit 1
+    fi
+
+    rm -f "$probe_file"
+done
+
+# The lock is released automatically when xcodebuild exits or is interrupted.
+exec /usr/bin/lockf -k -t 1800 "$lock_file" xcodebuild "$@"

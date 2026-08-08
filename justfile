@@ -4,6 +4,9 @@ PN := "pnpm"
 PNR := PN + " run"
 PNX := PN + " exec"
 
+# Update this from `xcrun simctl list devices available` when the simulator changes.
+SWIFT_IOS_TEST_DESTINATION := "platform=iOS Simulator,name=iPhone 17 Pro Max"
+
 alias z := zed
 alias fmt := format
 alias fmt-c := format-check
@@ -14,15 +17,23 @@ alias i := install-modules
 default:
     just --list --unsorted
 
-# Run all verification checks
-[parallel]
-ready: quality test
+# Generate the shared UI string catalog, then run all verification checks.
+ready: generate-localizations quality test
 
 # Run all quality checks
 [parallel]
 quality: format-check lint typecheck
 
-# Run all tests
+# Generate the English source catalog for the shared authentication UI.
+generate-localizations:
+    xcrun xcstringstool extract \
+        --modern-localizable-strings \
+        --SwiftUI \
+        --output-format xcstrings \
+        --output-directory Sources/KamaalAuthUI \
+        $(rg --files Sources/KamaalAuthUI -g '*.swift')
+
+# Run all tests on macOS and iOS
 [parallel]
 test: test-ts test-swift
 
@@ -31,9 +42,19 @@ test: test-ts test-swift
 test-ts:
     {{ PNR }} test
 
-# Run Swift package tests
-test-swift:
+# Run Swift package tests on macOS and iOS
+test-swift: test-swift-macos test-swift-ios
+
+# Run Swift package tests on macOS
+test-swift-macos:
     swift test
+
+# Run Swift package tests on iOS
+test-swift-ios:
+    ./scripts/with-ios-simulator-lock \
+        -scheme KamaalAuth-Package \
+        -destination "{{ SWIFT_IOS_TEST_DESTINATION }}" \
+        test
 
 # Typecheck the server package
 [working-directory("server")]

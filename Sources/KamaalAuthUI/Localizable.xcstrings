@@ -1,0 +1,81 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "8–128 characters" : {
+
+    },
+    "An account already exists for this email address." : {
+
+    },
+    "Authentication failed" : {
+
+    },
+    "Authentication mode" : {
+
+    },
+    "Create an account to get started." : {
+
+    },
+    "Email addresses do not match." : {
+
+    },
+    "Enter a valid email address." : {
+
+    },
+    "Enter at least 2 words separated by single spaces." : {
+
+    },
+    "Error: %arg" : {
+
+    },
+    "Jane Doe" : {
+
+    },
+    "Login" : {
+
+    },
+    "Name must contain at least 3 characters." : {
+
+    },
+    "Name must not have leading or trailing spaces." : {
+
+    },
+    "Password must contain at least 8 characters." : {
+
+    },
+    "Password must contain at most 128 characters." : {
+
+    },
+    "Passwords do not match." : {
+
+    },
+    "Please correct the highlighted fields." : {
+
+    },
+    "Sign Up" : {
+
+    },
+    "Sign in to continue." : {
+
+    },
+    "The email or password is incorrect." : {
+
+    },
+    "The server is unavailable. Please try again." : {
+
+    },
+    "Welcome to %arg" : {
+
+    },
+    "Your account was authenticated, but the session could not be loaded. Please try again." : {
+
+    },
+    "Your sign-in details could not be saved. Please try again." : {
+
+    },
+    "jane@example.com" : {
+
+    }
+  },
+  "version" : "1.3"
+}

@@ -4,14 +4,10 @@ Shared auth stack for multiple apps, so an improvement lands once instead of twi
 
 One repo, two published artifacts:
 
-| Artifact      | Name                                             | Consumed as                          |
-| ------------- | ------------------------------------------------ | ------------------------------------ |
-| npm package   | `@kamaalio/kamaal-auth` (in [`server/`](server)) | a mountable Hono auth router         |
-| Swift package | `KamaalAuth` (at the repo root)                  | `KamaalAuthCore`, `KamaalAuthClient` |
-
-> **Not built yet:** `KamaalAuthUI` — the shared `@Observable` auth model, the auth-gate view modifier, and the
-> combined sign-in/sign-up screen, with its components kept inside the package. Until it lands, apps keep their own
-> auth screens on top of `KamaalAuthClient`.
+| Artifact      | Name                                             | Consumed as                                          |
+| ------------- | ------------------------------------------------ | ---------------------------------------------------- |
+| npm package   | `@kamaalio/kamaal-auth` (in [`server/`](server)) | a mountable Hono auth router                         |
+| Swift package | `KamaalAuth` (at the repo root)                  | `KamaalAuthCore`, `KamaalAuthClient`, `KamaalAuthUI` |
 
 ## Two things this package deliberately does not own
 
@@ -121,6 +117,18 @@ struct MyAuthHooks: AuthRequestHooks {
 }
 
 let auth = KamaalAuthClientImpl(hooks: MyAuthHooks(client: client), credentialsKey: "\(bundleID).credentials")
+```
+
+`KamaalAuthUI` provides the shared sign-in/sign-up flow and gates app content until authentication completes:
+
+```swift
+@State private var auth = KamaalAuth(
+    client: client,
+    configuration: KamaalAuthConfiguration(appName: "My App")
+)
+
+Text("Signed in")
+    .kamaalAuth(auth)
 ```
 
 Because the requests live in your app, this package has no HTTP stack, no transport, and no knowledge of your code
