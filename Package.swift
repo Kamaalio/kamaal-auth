@@ -15,10 +15,13 @@ let package = Package(
     products: [
         .library(name: "KamaalAuthCore", targets: ["KamaalAuthCore"]),
         .library(name: "KamaalAuthClient", targets: ["KamaalAuthClient"]),
+        .library(name: "KamaalAuthOpenAPI", targets: ["KamaalAuthOpenAPI"]),
         .library(name: "KamaalAuthTestSupport", targets: ["KamaalAuthTestSupport"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/Kamaalio/KamaalSwift", .upToNextMajor(from: "3.5.0"))
+        .package(url: "https://github.com/Kamaalio/KamaalSwift", .upToNextMajor(from: "3.5.0")),
+        .package(url: "https://github.com/apple/swift-http-types", .upToNextMajor(from: "1.6.0")),
+        .package(url: "https://github.com/apple/swift-openapi-runtime", .upToNextMajor(from: "1.12.0")),
     ],
     targets: [
         .target(
@@ -40,6 +43,17 @@ let package = Package(
             swiftSettings: swiftSettings,
         ),
         .target(
+            name: "KamaalAuthOpenAPI",
+            dependencies: [
+                .product(name: "HTTPTypes", package: "swift-http-types"),
+                .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
+                .product(name: "KamaalLogger", package: "KamaalSwift"),
+                "KamaalAuthCore",
+                "KamaalAuthClient",
+            ],
+            swiftSettings: swiftSettings,
+        ),
+        .target(
             name: "KamaalAuthTestSupport",
             dependencies: [
                 "KamaalAuthCore",
@@ -56,6 +70,16 @@ let package = Package(
             name: "KamaalAuthClientTests",
             dependencies: [
                 "KamaalAuthClient",
+                "KamaalAuthTestSupport",
+            ],
+            swiftSettings: swiftSettings,
+        ),
+        .testTarget(
+            name: "KamaalAuthOpenAPITests",
+            dependencies: [
+                .product(name: "HTTPTypes", package: "swift-http-types"),
+                .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
+                "KamaalAuthOpenAPI",
                 "KamaalAuthTestSupport",
             ],
             swiftSettings: swiftSettings,
