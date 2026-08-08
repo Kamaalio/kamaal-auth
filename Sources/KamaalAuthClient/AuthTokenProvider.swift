@@ -17,12 +17,12 @@ private let logger = KamaalLogger(from: AuthTokenProvider.self)
 public struct AuthTokenProvider: Sendable {
     private let store: any CredentialsStore
     private let key: String
-    private let issueToken: @Sendable (String) async -> AuthRequestOutcome<AuthCredentialHeaders>
+    private let issueToken: @Sendable () async -> AuthRequestOutcome<AuthCredentialHeaders>
 
     public init(
         credentialsKey: String,
         credentialsStore: any CredentialsStore,
-        issueToken: @escaping @Sendable (String) async -> AuthRequestOutcome<AuthCredentialHeaders>
+        issueToken: @escaping @Sendable () async -> AuthRequestOutcome<AuthCredentialHeaders>
     ) {
         key = credentialsKey
         store = credentialsStore
@@ -65,7 +65,7 @@ public struct AuthTokenProvider: Sendable {
     public func refreshToken() async -> Result<Void, SessionErrors> {
         guard let credentials = storedCredentials() else { return .failure(.unauthorized) }
 
-        switch await issueToken(credentials.sessionToken) {
+        switch await issueToken() {
         case .success(let headers):
             do {
                 try persist(headers, keepingSessionExpiry: credentials.sessionExpiryDate)

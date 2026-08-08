@@ -79,6 +79,6 @@ public protocol AuthRequestHooks: Sendable {
     /// Looks the session up using the stored JWT.
     func session() async -> AuthRequestOutcome<AuthSession>
 
-    /// Mints a fresh JWT. Must authorize with `sessionToken`, not with the stored JWT, or it will recurse.
-    func issueToken(sessionToken: String) async -> AuthRequestOutcome<AuthCredentialHeaders>
+    /// Mints a fresh JWT. Must authorize with the session token, not the JWT this call replaces, or it will recurse.
+    func issueToken() async -> AuthRequestOutcome<AuthCredentialHeaders>
 }

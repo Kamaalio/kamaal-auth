@@ -41,7 +41,7 @@ private func makeProvider(
     store: InMemoryCredentialsStore,
     issued: AuthCredentialHeaders? = MockAuthRequestHooks.credentials(authToken: "refreshed.jwt.token")
 ) -> AuthTokenProvider {
-    AuthTokenProvider(credentialsKey: credentialsKey, credentialsStore: store) { _ in
+    AuthTokenProvider(credentialsKey: credentialsKey, credentialsStore: store) {
         guard let issued else { return .failure(AuthRequestFailure(status: 401)) }
 
         return .success(issued)
@@ -147,7 +147,6 @@ struct SessionTokenMiddlewareTests {
         #expect(forwarded.headerFields[.authorization] == "Bearer stored-session-token")
     }
 
-    /// A refresh that authorized itself through a refreshing middleware would never terminate.
     @Test("Never refreshes, so minting a token cannot recurse")
     func neverRefreshes() async throws {
         let store = InMemoryCredentialsStore()

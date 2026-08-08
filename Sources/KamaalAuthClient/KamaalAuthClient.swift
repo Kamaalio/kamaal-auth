@@ -31,8 +31,8 @@ public struct KamaalAuthClientImpl: KamaalAuthClient {
 
     public init(hooks: any AuthRequestHooks, credentialsKey: String, credentialsStore: any CredentialsStore) {
         self.hooks = hooks
-        tokens = AuthTokenProvider(credentialsKey: credentialsKey, credentialsStore: credentialsStore) { sessionToken in
-            await hooks.issueToken(sessionToken: sessionToken)
+        tokens = AuthTokenProvider(credentialsKey: credentialsKey, credentialsStore: credentialsStore) {
+            await hooks.issueToken()
         }
     }
 

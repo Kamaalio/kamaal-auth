@@ -19,8 +19,6 @@ public final class MockAuthRequestHooks: AuthRequestHooks, @unchecked Sendable {
 
     public struct Call: Sendable {
         public let operation: Operation
-        /// The session token `issueToken` was called with, if any.
-        public let sessionToken: String?
     }
 
     private let lock = NSLock()
@@ -94,8 +92,8 @@ public final class MockAuthRequestHooks: AuthRequestHooks, @unchecked Sendable {
         return nextCredentialOutcome(.signIn)
     }
 
-    public func issueToken(sessionToken: String) async -> AuthRequestOutcome<AuthCredentialHeaders> {
-        record(.issueToken, sessionToken: sessionToken)
+    public func issueToken() async -> AuthRequestOutcome<AuthCredentialHeaders> {
+        record(.issueToken)
 
         return nextCredentialOutcome(.issueToken)
     }
@@ -119,8 +117,8 @@ public final class MockAuthRequestHooks: AuthRequestHooks, @unchecked Sendable {
         }
     }
 
-    private func record(_ operation: Operation, sessionToken: String? = nil) {
-        lock.withLock { recorded.append(Call(operation: operation, sessionToken: sessionToken)) }
+    private func record(_ operation: Operation) {
+        lock.withLock { recorded.append(Call(operation: operation)) }
     }
 
     private func nextCredentialOutcome(_ operation: Operation) -> AuthRequestOutcome<AuthCredentialHeaders> {

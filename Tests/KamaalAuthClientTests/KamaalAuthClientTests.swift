@@ -255,8 +255,8 @@ struct CredentialValidityTests {
 
 @Suite("Token refresh")
 struct TokenRefreshTests {
-    @Test("Refreshes using the session token, never the stored JWT")
-    func refreshesWithSessionToken() async throws {
+    @Test("Calls the hook to mint a fresh token")
+    func callsIssueToken() async throws {
         let store = InMemoryCredentialsStore()
         try storeCredentials(in: store)
         let hooks = MockAuthRequestHooks().stub(.issueToken, with: .success(MockAuthRequestHooks.credentials()))
@@ -264,7 +264,7 @@ struct TokenRefreshTests {
 
         _ = await client.refreshToken()
 
-        #expect(hooks.lastCall(.issueToken)?.sessionToken == "stored-session-token")
+        #expect(hooks.callCount(.issueToken) == 1)
     }
 
     @Test("Carries the known session expiry across a refresh")
