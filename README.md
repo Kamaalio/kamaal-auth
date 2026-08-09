@@ -4,11 +4,11 @@ Shared auth stack for multiple apps, so an improvement lands once instead of twi
 
 One repo, three published artifacts:
 
-| Artifact      | Name                                                                | Consumed as                                          |
-| ------------- | ------------------------------------------------------------------- | ---------------------------------------------------- |
-| npm package   | `@kamaalio/kamaal-auth-core` (in [`packages/core/`](packages/core)) | the auth engine, with no server library of its own   |
-| npm package   | `@kamaalio/kamaal-auth-hono` (in [`packages/hono/`](packages/hono)) | a mountable Hono auth router                         |
-| Swift package | `KamaalAuth` (at the repo root)                                     | `KamaalAuthCore`, `KamaalAuthClient`, `KamaalAuthUI` |
+| Artifact      | Name                                                                | Consumed as                                        |
+| ------------- | ------------------------------------------------------------------- | -------------------------------------------------- |
+| npm package   | `@kamaalio/kamaal-auth-core` (in [`packages/core/`](packages/core)) | the auth engine, with no server library of its own |
+| npm package   | `@kamaalio/kamaal-auth-hono` (in [`packages/hono/`](packages/hono)) | a mountable Hono auth router                       |
+| Swift package | `KamaalAuth` (at the repo root)                                     | `KamaalAuth`                                       |
 
 The two npm packages release in lockstep under a single `npm/<version>` tag.
 
@@ -110,9 +110,13 @@ just ready      # quality + tests, both languages
 
 ## Swift usage
 
-Same idea as the server: you supply the requests, the package supplies everything worth sharing. Implement
-`AuthRequestHooks` with your own generated client, and `KamaalAuthClient` owns credential storage, the refresh policy,
-expiry rules, session modelling and error semantics.
+Same idea as the server: you supply the requests, the package supplies everything worth sharing. `import KamaalAuth`
+is the only import an app needs — it re-exports the credential storage layer, the networking client, the OpenAPI
+middleware, and the SwiftUI screens as one module. Test targets additionally import `KamaalAuthTestSupport` for
+`MockAuthRequestHooks`.
+
+Implement `AuthRequestHooks` with your own generated client, and the client layer owns credential storage, the
+refresh policy, expiry rules, session modelling and error semantics.
 
 ```swift
 struct MyAuthHooks: AuthRequestHooks {

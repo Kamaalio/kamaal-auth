@@ -13,11 +13,8 @@ let package = Package(
     defaultLocalization: "en",
     platforms: [.macOS(.v14), .iOS(.v17)],
     products: [
-        .library(name: "KamaalAuthCore", targets: ["KamaalAuthCore"]),
-        .library(name: "KamaalAuthClient", targets: ["KamaalAuthClient"]),
-        .library(name: "KamaalAuthOpenAPI", targets: ["KamaalAuthOpenAPI"]),
+        .library(name: "KamaalAuth", targets: ["KamaalAuth"]),
         .library(name: "KamaalAuthTestSupport", targets: ["KamaalAuthTestSupport"]),
-        .library(name: "KamaalAuthUI", targets: ["KamaalAuthUI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/Kamaalio/KamaalSwift", .upToNextMajor(from: "3.5.0")),
@@ -26,6 +23,16 @@ let package = Package(
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", .upToNextMajor(from: "1.19.3")),
     ],
     targets: [
+        .target(
+            name: "KamaalAuth",
+            dependencies: [
+                "KamaalAuthCore",
+                "KamaalAuthClient",
+                "KamaalAuthOpenAPI",
+                "KamaalAuthUI",
+            ],
+            swiftSettings: swiftSettings,
+        ),
         .target(
             name: "KamaalAuthCore",
             dependencies: [
