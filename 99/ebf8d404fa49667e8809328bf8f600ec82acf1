@@ -1,0 +1,26 @@
+packages/core/README.md
+  s_ffb0d6c1674f05::t_ed32acfa41d779 1-91
+packages/hono/README.md
+  s_ffb0d6c1674f05::t_ed32acfa41d779 1-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "99ebf8d404fa49667e8809328bf8f600ec82acf1",
+  "prompts": {},
+  "humans": {
+    "h_66e824d23aae73": {
+      "author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_ffb0d6c1674f05": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fe774-520a-7812-9983-9b02632c8c35",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  }
+}
