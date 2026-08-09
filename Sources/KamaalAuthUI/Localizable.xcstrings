@@ -16,6 +16,9 @@
     "Create an account to get started." : {
 
     },
+    "Email" : {
+
+    },
     "Email addresses do not match." : {
 
     },
@@ -25,19 +28,31 @@
     "Enter at least 2 words separated by single spaces." : {
 
     },
+    "Error: %@" : {
+
+    },
     "Error: %arg" : {
 
     },
     "Jane Doe" : {
 
     },
+    "jane@example.com" : {
+
+    },
     "Login" : {
+
+    },
+    "Name" : {
 
     },
     "Name must contain at least 3 characters." : {
 
     },
     "Name must not have leading or trailing spaces." : {
+
+    },
+    "Password" : {
 
     },
     "Password must contain at least 8 characters." : {
@@ -52,16 +67,25 @@
     "Please correct the highlighted fields." : {
 
     },
-    "Sign Up" : {
+    "Sign in to continue." : {
 
     },
-    "Sign in to continue." : {
+    "Sign Up" : {
 
     },
     "The email or password is incorrect." : {
 
     },
     "The server is unavailable. Please try again." : {
+
+    },
+    "Verify email" : {
+
+    },
+    "Verify password" : {
+
+    },
+    "Welcome to %@" : {
 
     },
     "Welcome to %arg" : {
@@ -71,9 +95,6 @@
 
     },
     "Your sign-in details could not be saved. Please try again." : {
-
-    },
-    "jane@example.com" : {
 
     }
   },
