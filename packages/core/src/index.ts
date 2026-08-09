@@ -2,6 +2,7 @@ export {
   AUTH_HEADER_NAMES,
   AUTH_OPENAPI_TAG,
   AUTH_ROUTE_PATHS,
+  DEFAULT_REQUEST_ID_HEADER_NAME,
   MIME_TYPES,
   ONE_DAY_IN_SECONDS,
   STATUS_CODES,
@@ -12,7 +13,7 @@ export type { AuthConfig, AuthJwtConfig, AuthSessionConfig } from './config.js';
 
 export {
   AUTH_ERROR_STATUSES,
-  AuthHttpError,
+  AuthError,
   SessionNotFound,
   defaultAuthErrorRenderer,
   type AuthErrorInfo,
@@ -51,12 +52,16 @@ export {
 
 export { AUTH_EVENTS, noopAuthLogger, type AuthLogFields, type AuthLogger } from './logging/index.js';
 
+export { resolveSession, type AuthSessionResponse, type SessionResolverOptions } from './session.js';
+
 export {
-  AUTH_SESSION_CONTEXT_KEY,
-  type AuthHonoEnv,
-  type AuthSessionResponse,
-  type AuthVariables,
-} from './middleware/session.js';
+  createAuthEngine,
+  type AuthEngine,
+  type AuthOutcome,
+  type AuthResponsePayload,
+  type CreateAuthEngineOptions,
+  type SessionExtras,
+} from './engine.js';
 
 export {
   EmailPasswordSignInSchema,
@@ -72,14 +77,6 @@ export { AuthenticationHeaders, TokenHeaders } from './schemas/headers.js';
 export { DefaultErrorResponseSchema, DefaultValidationErrorResponseSchema } from './schemas/errors.js';
 
 export { buildAuthSchemas, type AuthSchemas, type BaseUser, type SessionResponseOf } from './schemas/responses.js';
-
-export {
-  createAuthModule,
-  type AuthModule,
-  type AuthRouteDeps,
-  type CreateAuthModuleOptions,
-  type SessionExtras,
-} from './router/factory.js';
 
 export {
   bearerTokenFrom,

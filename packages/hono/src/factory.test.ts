@@ -1,11 +1,11 @@
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { AUTH_HEADER_NAMES } from '../constants.js';
-import { parseCredentialHeaders } from '../headers/credentials.js';
+import { AUTH_HEADER_NAMES, parseCredentialHeaders } from '@kamaalio/kamaal-auth-core';
+import { SESSION_COOKIE_NAME, createInMemoryAuth, type InMemoryAuth } from '@kamaalio/kamaal-auth-core/testing';
+
+import type { AuthHonoEnv } from './env.js';
 import { createAuthModule } from './factory.js';
-import { SESSION_COOKIE_NAME, createInMemoryAuth, type InMemoryAuth } from '../testing/index.js';
-import type { AuthHonoEnv } from '../middleware/session.js';
 
 const BASE_PATH = '/app-api/auth';
 const ORIGIN = 'http://localhost';

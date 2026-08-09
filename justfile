@@ -37,8 +37,7 @@ generate-localizations:
 [parallel]
 test: test-ts test-swift
 
-# Run server package tests
-[working-directory("server")]
+# Run the npm package tests
 test-ts:
     {{ PNR }} test
 
@@ -47,7 +46,14 @@ test-swift: test-swift-macos test-swift-ios
 
 # Run Swift package tests on macOS
 test-swift-macos:
-    swift test
+    #!/usr/bin/env zsh
+
+    if sw_vers -productVersion | grep -q '^27\.'
+    then
+        swift test
+    else
+        swift test --skip 'AuthSignInScreenSnapshotTests'
+    fi
 
 # Run Swift package tests on iOS
 test-swift-ios:
@@ -56,13 +62,11 @@ test-swift-ios:
         -destination "{{ SWIFT_IOS_TEST_DESTINATION }}" \
         test
 
-# Typecheck the server package
-[working-directory("server")]
-typecheck:
+# Typecheck the npm packages. Needs `build-ts` first, since hono typechecks against core's emitted types.
+typecheck: build-ts
     {{ PNR }} typecheck
 
-# Build the server package
-[working-directory("server")]
+# Build the npm packages, in dependency order
 build-ts:
     {{ PNR }} build
 

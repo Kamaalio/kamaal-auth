@@ -1,12 +1,13 @@
 {
-  "name": "@kamaalio/kamaal-auth",
+  "name": "@kamaalio/kamaal-auth-hono",
   "version": "0.0.0",
-  "description": "Mountable Hono auth router driven by consumer-supplied hooks. Brings no auth library or database schema of its own.",
+  "description": "Mountable Hono auth router. A thin adapter over @kamaalio/kamaal-auth-core, which holds the logic.",
   "license": "MIT",
   "author": "Kamaal Farah",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Kamaalio/kamaal-auth"
+    "url": "https://github.com/Kamaalio/kamaal-auth",
+    "directory": "packages/hono"
   },
   "files": [
     "dist"
@@ -18,17 +19,15 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./testing": {
-      "types": "./dist/testing/index.d.ts",
-      "default": "./dist/testing/index.js"
     }
   },
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
-    "release": "sh scripts/publish.sh"
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kamaalio/kamaal-auth-core": "workspace:*"
   },
   "devDependencies": {
     "@hono/zod-openapi": "^1.5.1",
@@ -42,7 +41,6 @@
   "peerDependencies": {
     "@hono/zod-openapi": "^1.5.1",
     "hono": "^4.12.31",
-    "jose": "^6.2.4",
     "zod": "^4.4.3"
   },
   "engines": {

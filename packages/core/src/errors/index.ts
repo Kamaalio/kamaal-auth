@@ -1,5 +1,3 @@
-import { HTTPException } from 'hono/http-exception';
-
 import { DEFAULT_REQUEST_ID_HEADER_NAME, STATUS_CODES, type StatusCode } from '../constants.js';
 
 /**
@@ -37,18 +35,34 @@ export function defaultAuthErrorRenderer(info: AuthErrorInfo): Response {
   return new Response(body, { status: info.status, headers });
 }
 
-export class AuthHttpError extends HTTPException {
+/**
+ * An expected auth failure, carrying its own already-rendered response.
+ *
+ * Deliberately a plain `Error`: a server adapter re-wraps it in whatever exception type its framework unwinds on
+ * (`AuthHttpError` in the Hono package), rather than this package picking a framework by picking a base class.
+ */
+export class AuthError extends Error {
+  readonly status: StatusCode;
   readonly code: string;
   readonly context?: unknown;
 
+  readonly #response: Response;
+
   constructor(info: AuthErrorInfo, render: AuthErrorRenderer = defaultAuthErrorRenderer) {
-    super(info.status, { res: render(info), message: info.message });
+    super(info.message);
+    this.name = 'AuthError';
+    this.status = info.status;
     this.code = info.code;
     this.context = info.context;
+    this.#response = render(info);
+  }
+
+  getResponse(): Response {
+    return this.#response;
   }
 }
 
-export class SessionNotFound extends AuthHttpError {
+export class SessionNotFound extends AuthError {
   constructor(options?: { requestId?: string; render?: AuthErrorRenderer }) {
     super(
       {
@@ -59,5 +73,6 @@ export class SessionNotFound extends AuthHttpError {
       },
       options?.render,
     );
+    this.name = 'SessionNotFound';
   }
 }

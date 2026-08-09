@@ -2,12 +2,29 @@
 
 Shared auth stack for multiple apps, so an improvement lands once instead of twice.
 
-One repo, two published artifacts:
+One repo, three published artifacts:
 
-| Artifact      | Name                                             | Consumed as                                          |
-| ------------- | ------------------------------------------------ | ---------------------------------------------------- |
-| npm package   | `@kamaalio/kamaal-auth` (in [`server/`](server)) | a mountable Hono auth router                         |
-| Swift package | `KamaalAuth` (at the repo root)                  | `KamaalAuthCore`, `KamaalAuthClient`, `KamaalAuthUI` |
+| Artifact      | Name                                                                | Consumed as                                          |
+| ------------- | ------------------------------------------------------------------- | ---------------------------------------------------- |
+| npm package   | `@kamaalio/kamaal-auth-core` (in [`packages/core/`](packages/core)) | the auth engine, with no server library of its own   |
+| npm package   | `@kamaalio/kamaal-auth-hono` (in [`packages/hono/`](packages/hono)) | a mountable Hono auth router                         |
+| Swift package | `KamaalAuth` (at the repo root)                                     | `KamaalAuthCore`, `KamaalAuthClient`, `KamaalAuthUI` |
+
+The two npm packages release in lockstep under a single `npm/<version>` tag.
+
+### Why the split
+
+`kamaal-auth-core` holds everything worth sharing: the hook contract, session resolution and JWT verification, the
+credential-header wire format, error-to-status mapping and the OpenAPI schemas. It expresses every operation against a
+plain `Request`, so it has no opinion about how requests reach it.
+
+`kamaal-auth-hono` is the adapter: route definitions, a session middleware, and the translation between a Hono
+`Context` and the engine. Supporting another server library means writing another adapter of about that size, not
+another auth package.
+
+A Hono app depends on `kamaal-auth-hono` alone — it re-exports everything `kamaal-auth-core` exports, so there is one
+package to add and one package to import from. Add `kamaal-auth-core` directly only if you are writing a new adapter,
+or using the engine without a server library at all.
 
 ## Two things this package deliberately does not own
 
@@ -18,12 +35,13 @@ One repo, two published artifacts:
 package derives its types from those signatures. `better-auth`, `drizzle-orm`, and your database driver never enter this
 package's dependency graph — which is why two apps on different `better-auth` versions can share it.
 
-The server package's only dependencies are `hono`, `@hono/zod-openapi`, `zod`, and `jose`, all as peers.
+`kamaal-auth-core`'s only dependencies are `zod`, `@asteasolutions/zod-to-openapi`, and `jose`, all as peers.
+`kamaal-auth-hono` adds `hono` and `@hono/zod-openapi`, also as peers, on top of the core package.
 
 ## Server usage
 
 ```ts
-import { createAuthModule, defineAuthHooks } from '@kamaalio/kamaal-auth';
+import { createAuthModule, defineAuthHooks } from '@kamaalio/kamaal-auth-hono';
 
 const hooks = defineAuthHooks({
   async signIn(c, input) {

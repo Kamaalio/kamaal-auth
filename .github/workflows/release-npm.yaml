@@ -14,10 +14,6 @@ permissions:
   id-token: write
   contents: read
 
-defaults:
-  run:
-    working-directory: server
-
 jobs:
   publish:
     name: Publish

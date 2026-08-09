@@ -1,4 +1,4 @@
-import { z } from '@hono/zod-openapi';
+import { z } from './openapi.js';
 
 const ApiCommonDatetimeShape = z.iso.datetime({ offset: true });
 

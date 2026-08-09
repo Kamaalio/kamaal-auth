@@ -1,9 +1,15 @@
 import { createRoute, type z } from '@hono/zod-openapi';
 import type { MiddlewareHandler } from 'hono';
 
-import { AUTH_OPENAPI_TAG, AUTH_ROUTE_PATHS, MIME_TYPES, STATUS_CODES } from '../constants.js';
-import { AuthenticationHeaders, TokenHeaders } from '../schemas/headers.js';
-import { SignOutResponseSchema } from '../schemas/payloads.js';
+import {
+  AUTH_OPENAPI_TAG,
+  AUTH_ROUTE_PATHS,
+  AuthenticationHeaders,
+  MIME_TYPES,
+  STATUS_CODES,
+  SignOutResponseSchema,
+  TokenHeaders,
+} from '@kamaalio/kamaal-auth-core';
 
 export interface RouteBuilderOptions {
   tag: string;

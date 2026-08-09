@@ -2,15 +2,18 @@
   "name": "kamaal-auth",
   "version": "0.0.0",
   "private": true,
-  "description": "Workspace root for the kamaal-auth shared auth stack. The published npm package lives in server/.",
+  "description": "Workspace root for the kamaal-auth shared auth stack. The published npm packages live in packages/.",
   "type": "module",
   "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "prepare": "husky",
-    "server": "pnpm --filter @kamaalio/kamaal-auth"
+    "release": "sh scripts/publish.sh"
   },
   "devDependencies": {
     "husky": "^9.1.7",

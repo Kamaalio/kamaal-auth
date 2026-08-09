@@ -1,4 +1,4 @@
-import type { z } from '@hono/zod-openapi';
+import type { z } from 'zod';
 
 import type { StatusCode } from './constants.js';
 import type { AuthErrorRenderer } from './errors/index.js';

@@ -1,15 +1,12 @@
-import { z } from '@hono/zod-openapi';
-import type { Context } from 'hono';
 import { type JWTPayload, type JWTVerifyGetKey, createLocalJWKSet, jwtVerify } from 'jose';
+import { z } from 'zod';
 
-import type { AuthConfig } from '../config.js';
-import { AUTH_EVENTS } from '../logging/index.js';
-import { STATUS_CODES } from '../constants.js';
-import { AuthHttpError, type AuthErrorRenderer, SessionNotFound } from '../errors/index.js';
-import type { AuthHookContext, AuthHooks } from '../hooks/types.js';
-import { bearerTokenFrom, getCredentialKind, toISO8601String } from '../utils/index.js';
-
-export const AUTH_SESSION_CONTEXT_KEY = 'kamaalAuthSession';
+import type { AuthConfig } from './config.js';
+import { AUTH_EVENTS } from './logging/index.js';
+import { STATUS_CODES } from './constants.js';
+import { AuthError, type AuthErrorRenderer, SessionNotFound } from './errors/index.js';
+import type { AuthHookContext, AuthHooks } from './hooks/types.js';
+import { bearerTokenFrom, getCredentialKind, toISO8601String } from './utils/index.js';
 
 export interface AuthSessionResponse {
   session: { expires_at: string; created_at: string; updated_at: string };
@@ -21,15 +18,6 @@ export interface AuthSessionResponse {
     name: string;
     [key: string]: unknown;
   };
-}
-
-/** Hono `Variables` contribution. Apps mixing this router into their own env should intersect with this. */
-export interface AuthVariables {
-  [AUTH_SESSION_CONTEXT_KEY]?: AuthSessionResponse;
-}
-
-export interface AuthHonoEnv {
-  Variables: AuthVariables;
 }
 
 /**
@@ -52,36 +40,33 @@ const AuthJWTPayloadSchema = z
 
 const PublicJWKSchema = z.object({ kty: z.string() }).catchall(z.unknown());
 
-/** Everything session resolution needs once a hook context already exists. Independent of the app's Hono env. */
-interface SessionResolverCore {
+/** Everything session resolution needs, given a hook context. Independent of any server framework. */
+export interface SessionResolverOptions {
   hooks: AuthHooks;
   config: AuthConfig;
   render: AuthErrorRenderer;
   remoteJwks: JWTVerifyGetKey;
 }
 
-export interface SessionResolverOptions<E extends AuthHonoEnv = AuthHonoEnv> extends SessionResolverCore {
-  hookContext: (c: Context<E>) => Promise<AuthHookContext>;
-}
-
-export async function resolveSession<E extends AuthHonoEnv>(
-  c: Context<E>,
-  options: SessionResolverOptions<E>,
+/**
+ * Resolves the caller's session from a bearer JWT, falling back to the `getSession` hook.
+ *
+ * Throws {@link AuthError} when a session cannot be established. Caching a resolved session per request is the
+ * adapter's job, since only it knows where per-request state lives.
+ */
+export async function resolveSession(
+  c: AuthHookContext,
+  options: SessionResolverOptions,
 ): Promise<AuthSessionResponse> {
-  const existing = c.get(AUTH_SESSION_CONTEXT_KEY);
-  if (existing != null) return existing;
-
-  const hookContext = await options.hookContext(c);
-
-  const fromJwt = await resolveSessionFromJwt(hookContext, options);
+  const fromJwt = await resolveSessionFromJwt(c, options);
   if (fromJwt != null) return fromJwt;
 
-  return resolveSessionFromHook(hookContext, options);
+  return resolveSessionFromHook(c, options);
 }
 
 async function resolveSessionFromJwt(
   c: AuthHookContext,
-  options: SessionResolverCore,
+  options: SessionResolverOptions,
 ): Promise<AuthSessionResponse | null> {
   const token = bearerTokenFrom(c.headers);
   if (token == null) return null;
@@ -121,7 +106,7 @@ async function resolveSessionFromJwt(
       },
       'Authentication token payload was invalid.',
     );
-    throw new AuthHttpError(
+    throw new AuthError(
       {
         status: STATUS_CODES.UNAUTHORIZED,
         code: 'INVALID_JWT_PAYLOAD',
@@ -156,7 +141,10 @@ async function resolveSessionFromJwt(
   };
 }
 
-async function resolveSessionFromHook(c: AuthHookContext, options: SessionResolverCore): Promise<AuthSessionResponse> {
+async function resolveSessionFromHook(
+  c: AuthHookContext,
+  options: SessionResolverOptions,
+): Promise<AuthSessionResponse> {
   const result = await options.hooks.getSession(c);
   if (!result.ok || result.value == null) {
     c.logger.warn(
@@ -200,7 +188,7 @@ async function resolveSessionFromHook(c: AuthHookContext, options: SessionResolv
   };
 }
 
-async function getVerificationKeys(c: AuthHookContext, options: SessionResolverCore): Promise<JWTVerifyGetKey> {
+async function getVerificationKeys(c: AuthHookContext, options: SessionResolverOptions): Promise<JWTVerifyGetKey> {
   if (options.config.isTest !== true) return options.remoteJwks;
 
   const result = await options.hooks.verificationKeys?.(c);

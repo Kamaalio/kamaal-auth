@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality-server:
-    name: Quality (server)
+  quality-node:
+    name: Quality (node)
     timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
@@ -41,14 +41,17 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Build
+        run: pnpm build
+
       - name: Typecheck
-        run: pnpm server typecheck
+        run: pnpm typecheck
 
       - name: Assert a single zod instance
         run: pnpm why zod
 
-  test-server:
-    name: Test (server)
+  test-node:
+    name: Test (node)
     timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
@@ -71,8 +74,11 @@ jobs:
       - name: Install modules
         run: pnpm i
 
+      - name: Build
+        run: pnpm build
+
       - name: Run tests
-        run: pnpm server test
+        run: pnpm test
 
   quality-swift:
     name: Quality (swift)
@@ -81,6 +87,9 @@ jobs:
     steps:
       - name: Git - Checkout
         uses: actions/checkout@v7
+
+      - name: Set up just
+        uses: extractions/setup-just@v4
 
       - name: Check formatting
         run: swift format lint --strict -r Sources Tests
@@ -93,8 +102,8 @@ jobs:
       - name: Git - Checkout
         uses: actions/checkout@v7
 
-      - name: Build
-        run: swift build
+      - name: Set up just
+        uses: extractions/setup-just@v4
 
       - name: Run tests
-        run: swift test
+        run: just test-swift-macos

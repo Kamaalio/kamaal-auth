@@ -1,0 +1,49 @@
+{
+  "name": "@kamaalio/kamaal-auth-core",
+  "version": "0.0.0",
+  "description": "Framework-agnostic auth engine driven by consumer-supplied hooks. Brings no auth library, server library or database schema of its own.",
+  "license": "MIT",
+  "author": "Kamaal Farah",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kamaalio/kamaal-auth",
+    "directory": "packages/core"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@asteasolutions/zod-to-openapi": "^8.5.0",
+    "@types/node": "^26.1.1",
+    "jose": "^6.2.4",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "@asteasolutions/zod-to-openapi": "^8.5.0",
+    "jose": "^6.2.4",
+    "zod": "^4.4.3"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

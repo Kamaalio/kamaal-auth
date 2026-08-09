@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": ["Sources", "Tests", ".build", "server/dist"],
+  "ignorePatterns": ["Sources", "Tests", ".build", "packages/*/dist"],
   "printWidth": 120,
   "arrowParens": "avoid",
   "singleQuote": true
