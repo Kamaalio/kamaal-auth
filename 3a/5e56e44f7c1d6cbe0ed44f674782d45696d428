@@ -1,0 +1,28 @@
+scripts/publish.sh
+  s_68497610570365::t_f168293cdcaea2 16
+.github/workflows/release-npm.yaml
+  s_68497610570365::t_f168293cdcaea2 1,6,39
+README.md
+  s_68497610570365::t_f168293cdcaea2 13,92-93,95,98-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3a5e56e44f7c1d6cbe0ed44f674782d45696d428",
+  "prompts": {},
+  "humans": {
+    "h_66e824d23aae73": {
+      "author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_68497610570365": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fe7ea-5d79-73e1-b2ea-eafd663073b7",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  }
+}
