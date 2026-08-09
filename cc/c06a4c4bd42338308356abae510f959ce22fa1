@@ -1,0 +1,24 @@
+tsconfig.json
+  s_83e9266472b7c9::t_1697adc6d207eb 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ccc06a4c4bd42338308356abae510f959ce22fa1",
+  "prompts": {},
+  "humans": {
+    "h_66e824d23aae73": {
+      "author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_83e9266472b7c9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fe7f4-acaa-7b00-8b93-6eddbf68b39e",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  }
+}
