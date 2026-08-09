@@ -1,7 +1,5 @@
 name: Release npm
 
-# npm releases are tagged `npm/<version>` so they never collide with the bare
-# semver tags SwiftPM consumes. See release-spm.yaml.
 on:
   push:
     tags:
