@@ -33,5 +33,48 @@ EOF
     rm -f "$probe_file"
 done
 
-# The lock is released automatically when xcodebuild exits or is interrupted.
-exec /usr/bin/lockf -k -t 1800 "$lock_file" xcodebuild "$@"
+# Hold the lock in this shell so signals can be forwarded directly to
+# xcodebuild. Running xcodebuild as lockf's child leaves it alive when lockf is
+# interrupted, which makes a failed `just ready` impossible to cancel.
+exec 9>"$lock_file"
+/usr/bin/lockf -k -t 1800 9
+
+xcodebuild "$@" 9>&- &
+xcodebuild_pid=$!
+
+terminate_xcodebuild() {
+    exit_status="$1"
+    trap - INT TERM
+
+    if kill -0 "$xcodebuild_pid" 2>/dev/null
+    then
+        kill -TERM "$xcodebuild_pid" 2>/dev/null || true
+
+        # Do not let an unresponsive xcodebuild make cancellation hang again.
+        (
+            exec 9>&-
+            sleep 5
+            kill -KILL "$xcodebuild_pid" 2>/dev/null || true
+        ) &
+        watchdog_pid=$!
+
+        wait "$xcodebuild_pid" 2>/dev/null || true
+        kill "$watchdog_pid" 2>/dev/null || true
+        wait "$watchdog_pid" 2>/dev/null || true
+    fi
+
+    exit "$exit_status"
+}
+
+trap 'terminate_xcodebuild 130' INT
+trap 'terminate_xcodebuild 143' TERM
+
+if wait "$xcodebuild_pid"
+then
+    xcodebuild_status=0
+else
+    xcodebuild_status=$?
+fi
+
+trap - INT TERM
+exit "$xcodebuild_status"

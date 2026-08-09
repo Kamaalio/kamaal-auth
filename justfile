@@ -7,7 +7,7 @@ alias z := zed
 alias fmt := format
 
 # Update this from `xcrun simctl list devices available` when the simulator changes.
-SWIFT_IOS_TEST_DESTINATION := "platform=iOS Simulator,name=iPhone 17 Pro Max"
+SWIFT_IOS_TEST_DESTINATION := "platform=iOS Simulator,name=iPhone 17 Pro Max,OS=26.5"
 
 # List available commands
 default:
