@@ -93,6 +93,13 @@ Two independent version lines come from one repo. GitHub Actions publishes npm p
 pushed. A bare semver tag (`<version>`) triggers Swift verification and the GitHub Release; SwiftPM resolves that tag.
 SwiftPM ignores `npm/*` tags entirely.
 
+To release the npm packages, create and push the npm-only tag:
+
+```sh
+git tag npm/<version>
+git push origin npm/<version>
+```
+
 Because both artifacts implement two ends of the same wire contract (notably the `set-auth-token` /
 `set-auth-token-expiry` / `set-session-token` / `set-session-update-age` headers), keep this table current:
 
