@@ -99,13 +99,6 @@ git tag <version>
 git push origin <version>
 ```
 
-Because both artifacts implement two ends of the same wire contract (notably the `set-auth-token` /
-`set-auth-token-expiry` / `set-session-token` / `set-session-update-age` headers), keep this table current:
-
-| npm          | SPM          |
-| ------------ | ------------ |
-| _unreleased_ | _unreleased_ |
-
 ## Development
 
 ```sh
