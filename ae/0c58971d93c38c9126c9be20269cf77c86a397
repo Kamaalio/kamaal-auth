@@ -1,0 +1,27 @@
+scripts/with-ios-simulator-lock
+  s_d5b71e0b4cf515::t_05fcac7c89cc23 42,55
+  s_d5b71e0b4cf515::t_d5398e24c17ec4 36-41,43-54,56-80
+justfile
+  s_d5b71e0b4cf515::t_d5398e24c17ec4 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ae0c58971d93c38c9126c9be20269cf77c86a397",
+  "prompts": {},
+  "humans": {
+    "h_66e824d23aae73": {
+      "author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d5b71e0b4cf515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fe6b4-14e2-7a63-9968-5c0c616e4528",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  }
+}
