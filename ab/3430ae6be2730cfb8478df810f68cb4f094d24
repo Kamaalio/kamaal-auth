@@ -1,0 +1,28 @@
+.github/workflows/main.yaml
+  h_66e824d23aae73 35-36,38-39,62-63,66,79-80,94
+scripts/publish.sh
+  h_66e824d23aae73 14-15
+.github/workflows/release-spm.yaml
+  h_66e824d23aae73 22-23,26
+package.json
+  h_66e824d23aae73 19
+.github/workflows/release-npm.yaml
+  h_66e824d23aae73 43-45,47,50
+scripts/with-ios-simulator-lock
+  h_66e824d23aae73 20-21,24-25
+justfile
+  h_66e824d23aae73 8-10,17-21,27-33,45,48,72-76,80,87-90,92,95-98,104,107,112,115,126-129,132-135,159-170
+pnpm-lock.yaml
+  h_66e824d23aae73 210-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ab3430ae6be2730cfb8478df810f68cb4f094d24",
+  "prompts": {},
+  "humans": {
+    "h_66e824d23aae73": {
+      "author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  }
+}
