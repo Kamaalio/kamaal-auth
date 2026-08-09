@@ -40,10 +40,13 @@ jobs:
         id: version
         run: echo "value=${GITHUB_REF_NAME#npm/}" >> "$GITHUB_OUTPUT"
 
+      - name: Set up just
+        uses: extractions/setup-just@v4
+
       - name: Install modules
-        run: pnpm i
+        run: just install-modules-node
 
       - name: Publish ${{ steps.version.outputs.value }}
-        run: pnpm release
+        run: just publish-node
         env:
           VERSION: ${{ steps.version.outputs.value }}

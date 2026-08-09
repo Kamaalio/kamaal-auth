@@ -32,23 +32,11 @@ jobs:
           cache-dependency-path: |
             pnpm-lock.yaml
 
-      - name: Install modules
-        run: pnpm i
+      - name: Set up just
+        uses: extractions/setup-just@v4
 
-      - name: Check formatting
-        run: pnpm fmt:check
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Build
-        run: pnpm build
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Assert a single zod instance
-        run: pnpm why zod
+      - name: Check quality
+        run: just quality-node
 
   test-node:
     name: Test (node)
@@ -71,14 +59,11 @@ jobs:
           cache-dependency-path: |
             pnpm-lock.yaml
 
-      - name: Install modules
-        run: pnpm i
-
-      - name: Build
-        run: pnpm build
+      - name: Set up just
+        uses: extractions/setup-just@v4
 
       - name: Run tests
-        run: pnpm test
+        run: just test-node
 
   quality-swift:
     name: Quality (swift)
@@ -91,8 +76,8 @@ jobs:
       - name: Set up just
         uses: extractions/setup-just@v4
 
-      - name: Check formatting
-        run: swift format lint --strict -r Sources Tests
+      - name: Check quality
+        run: just quality-swift
 
   test-swift:
     name: Test (swift)
@@ -106,4 +91,4 @@ jobs:
         uses: extractions/setup-just@v4
 
       - name: Run tests
-        run: just test-swift-macos
+        run: just test-swift

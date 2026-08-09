@@ -19,14 +19,11 @@ jobs:
       - name: Git - Checkout
         uses: actions/checkout@v7
 
-      - name: Check formatting
-        run: swift format lint --strict -r Sources Tests
-
-      - name: Build
-        run: swift build
+      - name: Set up just
+        uses: extractions/setup-just@v4
 
       - name: Run tests
-        run: swift test
+        run: just test-swift
 
       - name: Create GitHub release
         run: gh release create "$GITHUB_REF_NAME" --generate-notes

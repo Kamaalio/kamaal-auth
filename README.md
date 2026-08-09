@@ -89,15 +89,9 @@ extraRoutes: (router, deps) => router.openapi(preferencesRoute(deps.schemas.Sess
 
 ## Releasing
 
-Two independent version lines out of one repo:
-
-```sh
-just release-npm 0.1.0   # tags npm/0.1.0 -> publishes to npm
-just release-spm 0.1.0   # tags 0.1.0     -> SwiftPM resolves it
-```
-
-SwiftPM only resolves bare semver tags, so it ignores `npm/*` entirely. Use the `just` recipes rather than tagging by
-hand — a bare tag pushed when you meant an npm release publishes nothing and silently cuts a Swift release instead.
+Two independent version lines come from one repo. GitHub Actions publishes npm packages after an `npm/<version>` tag is
+pushed. A bare semver tag (`<version>`) triggers Swift verification and the GitHub Release; SwiftPM resolves that tag.
+SwiftPM ignores `npm/*` tags entirely.
 
 Because both artifacts implement two ends of the same wire contract (notably the `set-auth-token` /
 `set-auth-token-expiry` / `set-session-token` / `set-session-update-age` headers), keep this table current:

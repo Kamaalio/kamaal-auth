@@ -11,7 +11,8 @@ echo "🐸 $VERSION"
 pnpm i
 
 # Core first: the Hono package's dependency on it is pinned to this same version.
-for package in core hono; do
+for package in core hono
+do
   directory="packages/$package"
   echo "📦 $directory"
   rm -rf "$directory/dist"

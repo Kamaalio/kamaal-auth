@@ -17,10 +17,12 @@ simulator_directories=(
     "$HOME/Library/Developer/CoreSimulator/Devices"
 )
 
-for directory in "${simulator_directories[@]}"; do
+for directory in "${simulator_directories[@]}"
+do
     probe_file="$(mktemp "$directory/kamaal-auth-simulator-access.XXXXXX" 2>/dev/null || true)"
 
-    if [[ -z "$probe_file" ]]; then
+    if [[ -z "$probe_file" ]]
+    then
         cat >&2 <<'EOF'
 CoreSimulator is not writable from the current environment.
 Re-run the enclosing just recipe outside the filesystem sandbox.
