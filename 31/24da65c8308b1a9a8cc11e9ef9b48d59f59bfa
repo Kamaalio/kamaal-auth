@@ -1,0 +1,36 @@
+Sources/KamaalAuthUI/Localizable.xcstrings
+  s_d5a4dfaec478bc::t_5b5ba4c0788487 18-20,30-32,39-41,45-47,54-56,70,73,81-89
+packages/hono/README.md
+  s_ffb0d6c1674f05::t_ed32acfa41d779 1-99
+packages/core/README.md
+  s_ffb0d6c1674f05::t_ed32acfa41d779 1-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3124da65c8308b1a9a8cc11e9ef9b48d59f59bfa",
+  "prompts": {},
+  "humans": {
+    "h_66e824d23aae73": {
+      "author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d5a4dfaec478bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fe18c-8586-7301-8d01-ccacbf16b097",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    },
+    "s_ffb0d6c1674f05": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fe774-520a-7812-9983-9b02632c8c35",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  }
+}
