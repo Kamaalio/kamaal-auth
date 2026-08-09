@@ -10,7 +10,7 @@ One repo, three published artifacts:
 | npm package   | `@kamaalio/kamaal-auth-hono` (in [`packages/hono/`](packages/hono)) | a mountable Hono auth router                       |
 | Swift package | `KamaalAuth` (at the repo root)                                     | `KamaalAuth`                                       |
 
-The two npm packages release in lockstep under a single `npm/<version>` tag.
+The two npm packages release in lockstep under the same semver tag used by SwiftPM.
 
 ### Why the split
 
@@ -89,15 +89,14 @@ extraRoutes: (router, deps) => router.openapi(preferencesRoute(deps.schemas.Sess
 
 ## Releasing
 
-Two independent version lines come from one repo. GitHub Actions publishes npm packages after an `npm/<version>` tag is
-pushed. A bare semver tag (`<version>`) triggers Swift verification and the GitHub Release; SwiftPM resolves that tag.
-SwiftPM ignores `npm/*` tags entirely.
+All artifacts use one version line. GitHub Actions publishes the npm packages after a bare semver tag (`<version>`) is
+pushed, and SwiftPM resolves that same tag directly from the repository.
 
-To release the npm packages, create and push the npm-only tag:
+To release all packages, create and push one tag:
 
 ```sh
-git tag npm/<version>
-git push origin npm/<version>
+git tag <version>
+git push origin <version>
 ```
 
 Because both artifacts implement two ends of the same wire contract (notably the `set-auth-token` /

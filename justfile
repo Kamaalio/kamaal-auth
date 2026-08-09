@@ -28,7 +28,6 @@ quality: format-check lint typecheck
 quality-node: prepare-node quality-node-tasks
 
 # Run all quality checks for swift
-[parallel]
 quality-swift: lint-swift
 
 # Generate the English source catalog for the shared authentication UI.

@@ -13,7 +13,7 @@ if [ "${GITHUB_ACTIONS:-}" != "true" ] \
   || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]
 then
   echo "❌ npm packages may only be published by the GitHub Actions release workflow"
-  echo "Create and push the release tag instead: git tag npm/$VERSION && git push origin npm/$VERSION"
+  echo "Create and push the release tag instead: git tag $VERSION && git push origin $VERSION"
   exit 1
 fi
 

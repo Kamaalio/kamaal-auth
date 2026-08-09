@@ -1,9 +1,9 @@
-name: Release npm
+name: Release packages
 
 on:
   push:
     tags:
-      - 'npm/*'
+      - '*.*.*'
 
 env:
   PNPM_VERSION: 11.17.0
@@ -36,7 +36,7 @@ jobs:
 
       - name: Resolve version from tag
         id: version
-        run: echo "value=${GITHUB_REF_NAME#npm/}" >> "$GITHUB_OUTPUT"
+        run: echo "value=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Set up just
         uses: extractions/setup-just@v4
