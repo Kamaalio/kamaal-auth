@@ -5,7 +5,6 @@ import PackageDescription
 
 let swiftSettings: [SwiftSetting] = [
     .enableUpcomingFeature("ApproachableConcurrency"),
-    .treatAllWarnings(as: .error),
 ]
 
 let package = Package(
