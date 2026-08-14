@@ -56,9 +56,9 @@ test-swift-macos:
 
     if sw_vers -productVersion | grep -q '^27\.'
     then
-        swift test
+        swift test -Xswiftc -warnings-as-errors
     else
-        swift test --skip 'AuthSignInScreenSnapshotTests'
+        swift test --skip 'AuthSignInScreenSnapshotTests' -Xswiftc -warnings-as-errors
     fi
 
 # Run Swift package tests on iOS
