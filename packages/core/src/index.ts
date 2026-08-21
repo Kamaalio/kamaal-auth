@@ -50,7 +50,7 @@ export {
   type SignUpInputOf,
 } from './hooks/infer.js';
 
-export { AUTH_EVENTS, noopAuthLogger, type AuthLogFields, type AuthLogger } from './logging/index.js';
+export { AUTH_EVENTS, noopAuthLogger, type AuthEvent, type AuthLogFields, type AuthLogger } from './logging/index.js';
 
 export { resolveSession, type AuthSessionResponse, type SessionResolverOptions } from './session.js';
 

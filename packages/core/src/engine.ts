@@ -13,7 +13,7 @@ import type {
   EmailPasswordSignInInput,
   EmailPasswordSignUpInput,
 } from './hooks/types.js';
-import { AUTH_EVENTS } from './logging/index.js';
+import { AUTH_EVENTS, type AuthEvent } from './logging/index.js';
 import { EmailPasswordSignInSchema, EmailPasswordSignUpSchema } from './schemas/payloads.js';
 import { type AuthSchemas, buildAuthSchemas } from './schemas/responses.js';
 import { type AuthSessionResponse, resolveSession } from './session.js';
@@ -163,7 +163,7 @@ export function createAuthEngine<
   async function authenticated<S extends StatusCode>(
     c: AuthHookContext<TLocals>,
     result: Awaited<ReturnType<AuthHooks<TUser, TSignUpInput, TSignInInput, TLocals>['signIn']>>,
-    args: { status: S; event: string; message: string; routePath: string },
+    args: { status: S; event: AuthEvent; message: string; routePath: string },
   ): Promise<AuthOutcome<AuthResponsePayload<S>>> {
     if (!result.ok) return { ok: false, error: failure(result.error, c.requestId) };
 
