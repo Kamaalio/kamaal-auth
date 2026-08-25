@@ -1,0 +1,50 @@
+README.md
+  s_8ab87672d6aa86::t_131bec4bdfe2b2 38-39
+packages/core/README.md
+  s_8ab87672d6aa86::t_1e96631b0505d9 10
+packages/core/src/engine.ts
+  s_8ab87672d6aa86::t_301bfdab233edc 25-26
+packages/core/src/schemas/errors.ts
+  s_8ab87672d6aa86::t_0a01c3d282816d 1,5-6,8-10,17,20-21,30-31,34,40-42
+packages/core/src/schemas/headers.ts
+  s_8ab87672d6aa86::t_1a40c7107e62d6 1,4,11,15,19,23
+packages/core/src/schemas/payloads.ts
+  s_8ab87672d6aa86::t_5778e2d9479727 1,11,15,28,32,37-39,52,56,60,66-68,78-83
+packages/core/src/schemas/responses.ts
+  s_8ab87672d6aa86::t_44556924d89595 1,6,10,14,18,22,42,46,50,78-80,95,101-103,111,113,119-121
+packages/hono/README.md
+  s_8ab87672d6aa86::t_f06d341af5e768 10,18,42
+packages/hono/package.json
+  s_8ab87672d6aa86::t_1f459fd8792c70 33,42
+packages/hono/src/factory.test.ts
+  s_8ab87672d6aa86::t_0f93131a52537c 1-2,17,34,308,376,384,397,414
+packages/hono/src/factory.ts
+  s_8ab87672d6aa86::t_0c1bb216a0e534 1,23,58,73,77,163
+packages/hono/src/routes.ts
+  s_8ab87672d6aa86::t_e9f1939916127c 1-2
+pnpm-lock.yaml
+  s_8ab87672d6aa86::t_2ca426e24a06ed 253-255,289-293,1198,1200,1202,1204
+pnpm-workspace.yaml
+  s_8ab87672d6aa86::t_fb2d18e1047ded 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "c94e938bac88f2fc81e6e5f171250af5244be529",
+  "prompts": {},
+  "humans": {
+    "h_66e824d23aae73": {
+      "author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_8ab87672d6aa86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca25cf55-380a-4f04-9768-7eb9fc04eeac",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  }
+}
