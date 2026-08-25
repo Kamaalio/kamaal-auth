@@ -1,22 +1,23 @@
-import { z } from './openapi.js';
+import { z } from 'zod';
 
 export const DefaultErrorResponseSchema = z
   .object({
-    message: z.string().openapi({ description: 'Error message' }),
-    code: z.string().optional().openapi({ description: 'Error code' }),
+    message: z.string().meta({ description: 'Error message' }),
+    code: z.string().optional().meta({ description: 'Error code' }),
   })
-  .openapi('ErrorResponse', {
+  .meta({
+    $id: 'ErrorResponse',
     title: 'Error Response',
     description: 'Error response containing error message and optional error code',
   });
 
 const ValidationIssueSchema = z
   .object({
-    code: z.string().openapi({ description: 'Validation issue code', example: 'too_small' }),
+    code: z.string().meta({ description: 'Validation issue code', example: 'too_small' }),
     path: z
       .array(z.union([z.string(), z.number()]))
-      .openapi({ description: 'Path to the invalid field', example: ['amount'] }),
-    message: z.string().openapi({
+      .meta({ description: 'Path to the invalid field', example: ['amount'] }),
+    message: z.string().meta({
       description: 'Validation issue message',
       example: 'Number must be greater than 0',
     }),
@@ -25,17 +26,18 @@ const ValidationIssueSchema = z
 
 export const DefaultValidationErrorResponseSchema = z
   .object({
-    message: z.string().openapi({ description: 'Error message' }),
-    code: z.string().optional().openapi({ description: 'Error code' }),
+    message: z.string().meta({ description: 'Error message' }),
+    code: z.string().optional().meta({ description: 'Error code' }),
     context: z
       .object({
-        validations: z.array(ValidationIssueSchema).openapi({
+        validations: z.array(ValidationIssueSchema).meta({
           description: 'Per-field validation issues',
         }),
       })
       .optional(),
   })
-  .openapi('ValidationErrorResponse', {
+  .meta({
+    $id: 'ValidationErrorResponse',
     title: 'Validation Error Response',
     description: 'Error response for invalid request payloads, optionally including field-level validation issues',
   });

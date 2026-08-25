@@ -18,7 +18,7 @@ describe('createAuthEngine', () => {
   const SIGN_UP_INPUT = { email: 'ada@example.com', password: 'SecurePassword123!', name: 'Ada Lovelace' };
 
   let auth: InMemoryAuth;
-  let engine: AuthEngine<Record<never, never>>;
+  let engine: AuthEngine;
 
   beforeEach(async () => {
     auth = await createInMemoryAuth();

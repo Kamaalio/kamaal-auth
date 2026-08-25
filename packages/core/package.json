@@ -30,18 +30,18 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
   "devDependencies": {
-    "@asteasolutions/zod-to-openapi": "^8.5.0",
+    "@standard-schema/spec": "^1.1.0",
     "@types/node": "^26.1.1",
     "jose": "^6.2.4",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10",
-    "zod": "^4.4.3"
+    "vitest": "^4.1.10"
   },
   "peerDependencies": {
-    "@asteasolutions/zod-to-openapi": "^8.5.0",
-    "jose": "^6.2.4",
-    "zod": "^4.4.3"
+    "jose": "^6.2.4"
   },
   "engines": {
     "node": ">=24"

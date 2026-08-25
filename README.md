@@ -35,8 +35,11 @@ or using the engine without a server library at all.
 package derives its types from those signatures. `better-auth`, `drizzle-orm`, and your database driver never enter this
 package's dependency graph — which is why two apps on different `better-auth` versions can share it.
 
-`kamaal-auth-core`'s only dependencies are `zod`, `@asteasolutions/zod-to-openapi`, and `jose`, all as peers.
-`kamaal-auth-hono` adds `hono` and `@hono/zod-openapi`, also as peers, on top of the core package.
+`kamaal-auth-core`'s only peer dependency is `jose`. It ships its own default request/response schemas, built with
+Zod internally, but every schema-accepting option (`payloadSchemas`, `errorSchemas`, `sessionExtras`) takes any
+[Standard Schema](https://standardschema.dev) — Zod, ArkType, Valibot, or your own — so a consumer never has to
+install Zod. `kamaal-auth-hono` adds `hono` and `@kamaalio/hono-standard-openapi` as peers on top of the core
+package.
 
 ## Server usage
 

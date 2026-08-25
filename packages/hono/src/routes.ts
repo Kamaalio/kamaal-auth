@@ -1,4 +1,4 @@
-import { createRoute, type z } from '@hono/zod-openapi';
+import { createRoute, type SchemaOrReference } from '@kamaalio/hono-standard-openapi';
 import type { MiddlewareHandler } from 'hono';
 
 import {
@@ -14,13 +14,13 @@ import {
 export interface RouteBuilderOptions {
   tag: string;
   securitySchemeName: string;
-  errorSchema: z.ZodType;
-  validationErrorSchema: z.ZodType;
-  signUpSchema: z.ZodType;
-  signInSchema: z.ZodType;
-  authResponseSchema: z.ZodType;
-  sessionResponseSchema: z.ZodType;
-  tokenResponseSchema: z.ZodType;
+  errorSchema: SchemaOrReference;
+  validationErrorSchema: SchemaOrReference;
+  signUpSchema: SchemaOrReference;
+  signInSchema: SchemaOrReference;
+  authResponseSchema: SchemaOrReference;
+  sessionResponseSchema: SchemaOrReference;
+  tokenResponseSchema: SchemaOrReference;
   sessionMiddleware: MiddlewareHandler;
 }
 

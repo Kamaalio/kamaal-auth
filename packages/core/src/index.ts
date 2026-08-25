@@ -76,7 +76,16 @@ export { AuthenticationHeaders, TokenHeaders } from './schemas/headers.js';
 
 export { DefaultErrorResponseSchema, DefaultValidationErrorResponseSchema } from './schemas/errors.js';
 
-export { buildAuthSchemas, type AuthSchemas, type BaseUser, type SessionResponseOf } from './schemas/responses.js';
+export {
+  buildAuthSchemas,
+  AuthResponseSchema,
+  SessionResponseSchema,
+  TokenResponseSchema,
+  UserSchema,
+  type AuthSchemas,
+  type BaseUser,
+  type SessionResponseOf,
+} from './schemas/responses.js';
 
 export {
   bearerTokenFrom,

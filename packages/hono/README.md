@@ -7,15 +7,16 @@ Your application supplies the hooks that call its auth library and database. Thi
 ## Install
 
 ```sh
-npm install @kamaalio/kamaal-auth-hono hono @hono/zod-openapi zod
+npm install @kamaalio/kamaal-auth-hono hono @kamaalio/hono-standard-openapi
 ```
 
-Node.js 24 or newer is required.
+Node.js 24 or newer is required. Zod is not required — install it only if you want it for your own schemas
+(`payloadSchemas`, `errorSchemas`, `sessionExtras`); any [Standard Schema](https://standardschema.dev) library works.
 
 ## Quick start
 
 ```ts
-import { OpenAPIHono } from '@hono/zod-openapi';
+import { StandardOpenAPIHono } from '@kamaalio/hono-standard-openapi';
 import { authHookSuccess, createAuthModule, defineAuthHooks } from '@kamaalio/kamaal-auth-hono';
 
 const hooks = defineAuthHooks({
@@ -39,7 +40,7 @@ const hooks = defineAuthHooks({
   },
 });
 
-const app = new OpenAPIHono();
+const app = new StandardOpenAPIHono();
 const auth = createAuthModule({
   hooks,
   config: {

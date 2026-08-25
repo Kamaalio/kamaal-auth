@@ -1,2 +1,4 @@
 packages:
   - 'packages/*'
+minimumReleaseAgeExclude:
+  - '@kamaalio/hono-standard-openapi@0.0.11'

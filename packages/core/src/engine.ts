@@ -1,5 +1,5 @@
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { createRemoteJWKSet, decodeJwt } from 'jose';
-import type { z } from 'zod';
 
 import type { AuthConfig } from './config.js';
 import { AUTH_HEADER_NAMES, AUTH_OPENAPI_TAG, AUTH_ROUTE_PATHS, STATUS_CODES, type StatusCode } from './constants.js';
@@ -22,8 +22,8 @@ import { bearerTokenFrom, getCredentialKind, toISO8601String } from './utils/ind
 /**
  * What a server adapter turns into a response. Framework-shaped enough to be trivial to send, and nothing more.
  *
- * The status is a type parameter so an adapter that types responses per status code — `@hono/zod-openapi` does —
- * still sees the literal each operation actually returns.
+ * The status is a type parameter so an adapter that types responses per status code — `hono-standard-openapi`
+ * does — still sees the literal each operation actually returns.
  */
 export interface AuthResponsePayload<S extends StatusCode = StatusCode> {
   status: S;
@@ -42,31 +42,39 @@ type OkPayload = AuthResponsePayload<typeof STATUS_CODES.OK>;
 
 type CreatedPayload = AuthResponsePayload<typeof STATUS_CODES.CREATED>;
 
-export interface SessionExtras<ExtrasShape extends z.ZodRawShape, TLocals = unknown> {
-  /** Merged into the user object of every session and auth response, and into the OpenAPI document. */
-  schema: z.ZodObject<ExtrasShape>;
+export interface SessionExtras<TExtrasSchema extends StandardSchemaV1 = StandardSchemaV1, TLocals = unknown> {
+  /**
+   * Folded into the user object of every session and auth response, and into the OpenAPI document.
+   *
+   * Any Standard Schema library works — the adapter composes it alongside the package's own user schema rather
+   * than merging shapes, so this schema never needs to be a Zod schema.
+   */
+  schema: TExtrasSchema;
   /** Return type is pinned to `schema`, so the two cannot drift apart. */
-  resolve: (c: AuthHookContext<TLocals>, args: { userId: string }) => Promise<z.infer<z.ZodObject<ExtrasShape>>>;
+  resolve: (
+    c: AuthHookContext<TLocals>,
+    args: { userId: string },
+  ) => Promise<StandardSchemaV1.InferOutput<TExtrasSchema>>;
 }
 
 export interface CreateAuthEngineOptions<
   TUser extends AuthUser,
   TSignUpInput extends EmailPasswordSignUpInput,
   TSignInInput extends EmailPasswordSignInInput,
-  ExtrasShape extends z.ZodRawShape,
+  TExtrasSchema extends StandardSchemaV1,
   TLocals,
 > {
   hooks: AuthHooks<TUser, TSignUpInput, TSignInInput, TLocals>;
   config: AuthConfig;
   /**
    * Payload schemas. Override when the corresponding hook input is wider than the package default, so the adapter
-   * validates every field the hook expects.
+   * validates every field the hook expects. Any Standard Schema library works.
    */
   payloadSchemas?: {
-    signUp?: z.ZodType<TSignUpInput>;
-    signIn?: z.ZodType<TSignInInput>;
+    signUp?: StandardSchemaV1<unknown, TSignUpInput>;
+    signIn?: StandardSchemaV1<unknown, TSignInInput>;
   };
-  sessionExtras?: SessionExtras<ExtrasShape, TLocals>;
+  sessionExtras?: SessionExtras<TExtrasSchema, TLocals>;
 }
 
 /**
@@ -77,17 +85,16 @@ export interface CreateAuthEngineOptions<
  * framework throws.
  */
 export interface AuthEngine<
-  ExtrasShape extends z.ZodRawShape,
   TSignUpInput extends EmailPasswordSignUpInput = EmailPasswordSignUpInput,
   TSignInInput extends EmailPasswordSignInInput = EmailPasswordSignInInput,
   TLocals = unknown,
 > {
   config: AuthConfig;
-  schemas: AuthSchemas<ExtrasShape>;
+  schemas: AuthSchemas;
   /** Resolved OpenAPI naming, so an adapter does not have to re-apply the same defaults. */
   openApi: { tag: string; securitySchemeName: string };
   /** The schemas an adapter should validate request bodies against, after `payloadSchemas` defaulting. */
-  payloadSchemas: { signUp: z.ZodType<TSignUpInput>; signIn: z.ZodType<TSignInInput> };
+  payloadSchemas: { signUp: StandardSchemaV1<unknown, TSignUpInput>; signIn: StandardSchemaV1<unknown, TSignInInput> };
 
   /** Resolves the caller's session and folds in `sessionExtras`. */
   resolveSession(c: AuthHookContext<TLocals>): Promise<AuthOutcome<AuthSessionResponse>>;
@@ -111,21 +118,25 @@ export function createAuthEngine<
   TUser extends AuthUser,
   TSignUpInput extends EmailPasswordSignUpInput,
   TSignInInput extends EmailPasswordSignInInput,
-  ExtrasShape extends z.ZodRawShape = z.ZodRawShape,
+  TExtrasSchema extends StandardSchemaV1 = StandardSchemaV1,
   TLocals = unknown,
 >(
-  options: CreateAuthEngineOptions<TUser, TSignUpInput, TSignInInput, ExtrasShape, TLocals>,
-): AuthEngine<ExtrasShape, TSignUpInput, TSignInInput, TLocals> {
+  options: CreateAuthEngineOptions<TUser, TSignUpInput, TSignInInput, TExtrasSchema, TLocals>,
+): AuthEngine<TSignUpInput, TSignInInput, TLocals> {
   const { hooks, config } = options;
   const render = config.errorResponse ?? defaultAuthErrorRenderer;
   const errorStatuses = { ...AUTH_ERROR_STATUSES, ...config.errorStatuses };
-  const schemas = buildAuthSchemas<ExtrasShape>(options.sessionExtras?.schema.shape);
+  const schemas = buildAuthSchemas();
   const remoteJwks = createRemoteJWKSet(config.jwt.jwksUrl);
   const resolverOptions = { hooks: hooks as AuthHooks, config, render, remoteJwks };
 
   const payloadSchemas = {
-    signUp: options.payloadSchemas?.signUp ?? (EmailPasswordSignUpSchema as unknown as z.ZodType<TSignUpInput>),
-    signIn: options.payloadSchemas?.signIn ?? (EmailPasswordSignInSchema as unknown as z.ZodType<TSignInInput>),
+    signUp:
+      options.payloadSchemas?.signUp ??
+      (EmailPasswordSignUpSchema as unknown as StandardSchemaV1<unknown, TSignUpInput>),
+    signIn:
+      options.payloadSchemas?.signIn ??
+      (EmailPasswordSignInSchema as unknown as StandardSchemaV1<unknown, TSignInInput>),
   };
 
   function failure(error: AuthHookFailure, requestId: string | undefined): AuthError {
@@ -146,7 +157,7 @@ export function createAuthEngine<
 
     const extras = await sessionExtras.resolve(c, { userId: user.id });
 
-    return { ...user, ...extras };
+    return { ...user, ...(extras as Record<string, unknown>) };
   }
 
   /** Only {@link AuthError} is an expected failure; anything else is a bug and keeps unwinding. */

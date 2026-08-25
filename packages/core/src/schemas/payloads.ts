@@ -1,4 +1,4 @@
-import { z } from './openapi.js';
+import { z } from 'zod';
 
 export type EmailPasswordSignUp = z.infer<typeof EmailPasswordSignUpSchema>;
 
@@ -8,11 +8,11 @@ export type SignOutResponse = z.infer<typeof SignOutResponseSchema>;
 
 export const EmailPasswordSignUpSchema = z
   .object({
-    email: z.email().openapi({
+    email: z.email().meta({
       description: 'User email address',
       example: 'john.doe@example.com',
     }),
-    password: z.string().min(8).max(128).openapi({
+    password: z.string().min(8).max(128).meta({
       description: 'User password (minimum 8 characters)',
       example: 'SecurePassword123!',
     }),
@@ -25,16 +25,17 @@ export const EmailPasswordSignUpSchema = z
       .refine(val => /^[^\s]+(\s[^\s]+)+$/.test(val), {
         message: 'Name must contain at least 2 words separated by single spaces',
       })
-      .openapi({
+      .meta({
         description: 'User display name (minimum 2 words separated by single spaces)',
         example: 'John Doe',
       }),
-    callbackURL: z.url().optional().openapi({
+    callbackURL: z.url().optional().meta({
       description: 'URL to redirect to after sign up',
       example: 'https://example.com/dashboard',
     }),
   })
-  .openapi('EmailPasswordSignUp', {
+  .meta({
+    $id: 'EmailPasswordSignUp',
     title: 'Email Password Sign Up',
     description: 'Request body for signing up with email and password',
     example: {
@@ -47,21 +48,22 @@ export const EmailPasswordSignUpSchema = z
 
 export const EmailPasswordSignInSchema = z
   .object({
-    email: z.email().openapi({
+    email: z.email().meta({
       description: 'User email address',
       example: 'user@example.com',
     }),
-    password: z.string().min(8).max(128).openapi({
+    password: z.string().min(8).max(128).meta({
       description: 'User password (minimum 8 characters)',
       example: 'securePassword123',
     }),
-    callbackURL: z.url().optional().openapi({
+    callbackURL: z.url().optional().meta({
       description:
         'Optional URL to redirect to after successful sign in. If not provided, the default redirect will be used.',
       example: 'https://app.example.com/dashboard',
     }),
   })
-  .openapi('EmailPasswordSignIn', {
+  .meta({
+    $id: 'EmailPasswordSignIn',
     title: 'Email Password Sign In Request',
     description: 'Request payload for signing in with email and password credentials',
     example: {
@@ -71,6 +73,8 @@ export const EmailPasswordSignInSchema = z
     },
   });
 
-export const SignOutResponseSchema = z
-  .object({})
-  .openapi('SignOutResponse', { title: 'Sign Out Response', description: 'Successful signout response' });
+export const SignOutResponseSchema = z.object({}).meta({
+  $id: 'SignOutResponse',
+  title: 'Sign Out Response',
+  description: 'Successful signout response',
+});
