@@ -1,4 +1,5 @@
-import { OpenAPIHono, z } from '@hono/zod-openapi';
+import { StandardOpenAPIHono } from '@kamaalio/hono-standard-openapi';
+import { z } from 'zod';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { AUTH_HEADER_NAMES, parseCredentialHeaders } from '@kamaalio/kamaal-auth-core';
@@ -13,7 +14,7 @@ const ORIGIN = 'http://localhost';
 const SIGN_UP_BODY = { email: 'john.doe@example.com', password: 'SecurePassword123!', name: 'John Doe' };
 
 interface Harness {
-  app: OpenAPIHono<AuthHonoEnv>;
+  app: StandardOpenAPIHono<AuthHonoEnv>;
   auth: InMemoryAuth;
   request: (path: string, init?: RequestInit) => Promise<Response>;
 }
@@ -30,7 +31,7 @@ async function createHarness(
     },
   );
 
-  const app = new OpenAPIHono<AuthHonoEnv>();
+  const app = new StandardOpenAPIHono<AuthHonoEnv>();
   app.route(BASE_PATH, module.router);
 
   return {
@@ -304,7 +305,7 @@ describe('session extras', () => {
       },
     });
 
-    const app = new OpenAPIHono<AuthHonoEnv>();
+    const app = new StandardOpenAPIHono<AuthHonoEnv>();
     app.route(BASE_PATH, module.router);
 
     return {
@@ -359,28 +360,75 @@ describe('session extras', () => {
     expect(harness.resolveCalls).toHaveLength(1);
   });
 
-  it('publishes the extras in the OpenAPI document', async () => {
+  it('publishes the extras alongside the base user schema in the OpenAPI document', async () => {
     const harness = await createExtrasHarness();
     harness.app.doc('/spec.json', { openapi: '3.1.0', info: { title: 'Test', version: '1' } });
 
     const spec = await (await harness.app.request(`${ORIGIN}/spec.json`)).json();
+    const signUpResponseSchema =
+      spec.paths[`${BASE_PATH}/sign-up/email`].post.responses['201'].content['application/json'].schema;
 
-    expect(Object.keys(spec.components.schemas.UserSchema.properties)).toContain('preferred_currency');
+    expect(Object.keys(spec.components.schemas.UserSchema.properties)).not.toContain('preferred_currency');
+    expect(signUpResponseSchema.allOf[1].properties.user.properties).toMatchObject({
+      preferred_currency: expect.anything(),
+      has_preferred_currency_preference: expect.anything(),
+    });
+  });
+});
+
+describe('session extras from a non-Zod Standard Schema library', () => {
+  function standardObjectSchema(properties: Record<string, { type: string }>) {
+    return {
+      '~standard': {
+        jsonSchema: {
+          input: () => ({ properties, required: Object.keys(properties), type: 'object' }),
+          output: () => ({ properties, required: Object.keys(properties), type: 'object' }),
+        },
+        validate: (value: unknown) => ({ value }),
+        vendor: 'hand-rolled',
+        version: 1 as const,
+      },
+    };
+  }
+
+  it('folds extras into responses and the OpenAPI document without Zod ever validating them', async () => {
+    const NicknameSchema = standardObjectSchema({ nickname: { type: 'string' } });
+    const auth = await createInMemoryAuth();
+    const module = createAuthModule({
+      hooks: auth.hooks,
+      config: auth.config,
+      sessionExtras: {
+        schema: NicknameSchema,
+        resolve: async () => ({ nickname: 'Ada' }),
+      },
+    });
+
+    const app = new StandardOpenAPIHono<AuthHonoEnv>();
+    app.route(BASE_PATH, module.router);
+    app.doc('/spec.json', { openapi: '3.1.0', info: { title: 'Test', version: '1' } });
+
+    const response = await app.request(new Request(`${ORIGIN}${BASE_PATH}/sign-up/email`, jsonInit(SIGN_UP_BODY)));
+    expect((await response.json()).user).toMatchObject({ nickname: 'Ada' });
+
+    const spec = await (await app.request(`${ORIGIN}/spec.json`)).json();
+    const signUpResponseSchema =
+      spec.paths[`${BASE_PATH}/sign-up/email`].post.responses['201'].content['application/json'].schema;
+    expect(signUpResponseSchema.allOf[1].properties.user.properties).toMatchObject({ nickname: { type: 'string' } });
   });
 });
 
 describe('consumer-supplied router', () => {
   it("uses the consumer's defaultHook for validation failures", async () => {
     const auth = await createInMemoryAuth();
-    const router = new OpenAPIHono<AuthHonoEnv>({
+    const router = new StandardOpenAPIHono<AuthHonoEnv>({
       defaultHook: (result, c) => {
         if (result.success) return;
 
-        return c.json({ message: 'App envelope', issues: result.error.issues.length }, 422);
+        return c.json({ message: 'App envelope', issues: result.error.length }, 422);
       },
     });
     const module = createAuthModule({ hooks: auth.hooks, config: auth.config, router });
-    const app = new OpenAPIHono<AuthHonoEnv>();
+    const app = new StandardOpenAPIHono<AuthHonoEnv>();
     app.route(BASE_PATH, module.router);
 
     const response = await app.request(
@@ -393,7 +441,7 @@ describe('consumer-supplied router', () => {
 
   it('returns the same router instance it was given', async () => {
     const auth = await createInMemoryAuth();
-    const router = new OpenAPIHono<AuthHonoEnv>();
+    const router = new StandardOpenAPIHono<AuthHonoEnv>();
 
     expect(createAuthModule({ hooks: auth.hooks, config: auth.config, router }).router).toBe(router);
   });
@@ -410,7 +458,7 @@ describe('extra routes', () => {
       },
     });
 
-    const app = new OpenAPIHono<AuthHonoEnv>();
+    const app = new StandardOpenAPIHono<AuthHonoEnv>();
     app.route(BASE_PATH, module.router);
     const signUpResponse = await app.request(
       new Request(`${ORIGIN}${BASE_PATH}/sign-up/email`, jsonInit(SIGN_UP_BODY)),

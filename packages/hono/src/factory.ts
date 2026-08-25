@@ -1,4 +1,5 @@
-import { OpenAPIHono, type z } from '@hono/zod-openapi';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
+import { StandardOpenAPIHono, allOf, objectSchema, type SchemaOrReference } from '@kamaalio/hono-standard-openapi';
 import {
   AUTH_ROUTE_PATHS,
   type AuthConfig,
@@ -26,12 +27,13 @@ import { AUTH_SESSION_CONTEXT_KEY, type AuthHonoEnv } from './env.js';
 import { AuthHttpError } from './errors.js';
 import { buildAuthRoutes } from './routes.js';
 
-export interface AuthRouteDeps<
-  ExtrasShape extends z.ZodRawShape,
-  TLocals = unknown,
-  E extends AuthHonoEnv = AuthHonoEnv,
-> {
-  schemas: AuthSchemas<ExtrasShape>;
+export type ComposedAuthSchemas = Omit<AuthSchemas, 'AuthResponseSchema' | 'SessionResponseSchema'> & {
+  AuthResponseSchema: SchemaOrReference;
+  SessionResponseSchema: SchemaOrReference;
+};
+
+export interface AuthRouteDeps<TLocals = unknown, E extends AuthHonoEnv = AuthHonoEnv> {
+  schemas: ComposedAuthSchemas;
   requireSessionMiddleware: MiddlewareHandler<E>;
   getSession: (c: Context<E>) => AuthSessionResponse;
   hookContext: (c: Context<E>) => Promise<AuthHookContext<TLocals>>;
@@ -42,7 +44,7 @@ export interface CreateAuthModuleOptions<
   TUser extends AuthUser,
   TSignUpInput extends EmailPasswordSignUpInput,
   TSignInInput extends EmailPasswordSignInInput,
-  ExtrasShape extends z.ZodRawShape,
+  TExtrasSchema extends StandardSchemaV1,
   TLocals,
   E extends AuthHonoEnv,
 > {
@@ -54,30 +56,30 @@ export interface CreateAuthModuleOptions<
    * Supply the app's own router so its `defaultHook` — and therefore its validation-error envelope — governs these
    * routes too. Without one the package builds its own, which is only right for an app that has no factory of its own.
    */
-  router?: OpenAPIHono<E>;
+  router?: StandardOpenAPIHono<E>;
   logger?: (c: Context<E>) => AuthLogger;
   /** Per-request state handed to every hook as `c.locals`. Its type flows through to the hooks. */
   locals?: (c: Context<E>) => TLocals;
   requestId?: (c: Context<E>) => string | undefined;
   /**
    * Payload schemas. Override when the corresponding hook input is wider than the package default, so the router
-   * validates every field the hook expects.
+   * validates every field the hook expects. Any Standard Schema library works.
    */
   payloadSchemas?: {
-    signUp?: z.ZodType<TSignUpInput>;
-    signIn?: z.ZodType<TSignInInput>;
+    signUp?: StandardSchemaV1<unknown, TSignUpInput>;
+    signIn?: StandardSchemaV1<unknown, TSignInInput>;
   };
-  sessionExtras?: SessionExtras<ExtrasShape, TLocals>;
+  sessionExtras?: SessionExtras<TExtrasSchema, TLocals>;
   /** Mount app-owned routes on the same router, with the package's schemas and middleware handed back. */
-  extraRoutes?: (router: OpenAPIHono<E>, deps: AuthRouteDeps<ExtrasShape, TLocals, E>) => void;
+  extraRoutes?: (router: StandardOpenAPIHono<E>, deps: AuthRouteDeps<TLocals, E>) => void;
 }
 
-export interface AuthModule<ExtrasShape extends z.ZodRawShape, TLocals = unknown, E extends AuthHonoEnv = AuthHonoEnv> {
-  router: OpenAPIHono<E>;
+export interface AuthModule<TLocals = unknown, E extends AuthHonoEnv = AuthHonoEnv> {
+  router: StandardOpenAPIHono<E>;
   requireSessionMiddleware: MiddlewareHandler<E>;
   getSession: (c: Context<E>) => AuthSessionResponse;
   hookContext: (c: Context<E>) => Promise<AuthHookContext<TLocals>>;
-  schemas: AuthSchemas<ExtrasShape>;
+  schemas: ComposedAuthSchemas;
   config: AuthConfig;
 }
 
@@ -92,19 +94,32 @@ export function createAuthModule<
   TUser extends AuthUser,
   TSignUpInput extends EmailPasswordSignUpInput,
   TSignInInput extends EmailPasswordSignInInput,
-  ExtrasShape extends z.ZodRawShape = z.ZodRawShape,
+  TExtrasSchema extends StandardSchemaV1 = StandardSchemaV1,
   TLocals = unknown,
   E extends AuthHonoEnv = AuthHonoEnv,
 >(
-  options: CreateAuthModuleOptions<TUser, TSignUpInput, TSignInInput, ExtrasShape, TLocals, E>,
-): AuthModule<ExtrasShape, TLocals, E> {
-  const engine = createAuthEngine<TUser, TSignUpInput, TSignInInput, ExtrasShape, TLocals>({
+  options: CreateAuthModuleOptions<TUser, TSignUpInput, TSignInInput, TExtrasSchema, TLocals, E>,
+): AuthModule<TLocals, E> {
+  const engine = createAuthEngine<TUser, TSignUpInput, TSignInInput, TExtrasSchema, TLocals>({
     hooks: options.hooks,
     config: options.config,
     ...(options.payloadSchemas != null ? { payloadSchemas: options.payloadSchemas } : {}),
     ...(options.sessionExtras != null ? { sessionExtras: options.sessionExtras } : {}),
   });
-  const { config, schemas } = engine;
+  const { config } = engine;
+
+  const sessionExtras = options.sessionExtras;
+  const schemas: ComposedAuthSchemas =
+    sessionExtras == null
+      ? engine.schemas
+      : {
+          ...engine.schemas,
+          AuthResponseSchema: allOf([engine.schemas.AuthResponseSchema, objectSchema({ user: sessionExtras.schema })]),
+          SessionResponseSchema: allOf([
+            engine.schemas.SessionResponseSchema,
+            objectSchema({ user: sessionExtras.schema }),
+          ]),
+        };
 
   const requestIdOf = (c: Context<E>) => options.requestId?.(c);
   const loggerOf = (c: Context<E>) => options.logger?.(c) ?? noopAuthLogger;
@@ -126,8 +141,8 @@ export function createAuthModule<
     return outcome.value;
   }
 
-  function send<S extends StatusCode>(c: Context<E>, payload: AuthResponsePayload<S>) {
-    return c.json(payload.body as never, { status: payload.status, headers: payload.headers });
+  function send<S extends StatusCode>(c: Context<E>, payload: AuthResponsePayload<S>): never {
+    return c.json(payload.body as never, { status: payload.status, headers: payload.headers }) as never;
   }
 
   const requireSessionMiddleware: MiddlewareHandler<E> = async (c, next) => {
@@ -159,11 +174,11 @@ export function createAuthModule<
 
   const router =
     options.router ??
-    new OpenAPIHono<E>({
+    new StandardOpenAPIHono<E>({
       defaultHook: (result, c) => {
         if (result.success) return;
 
-        throw new AuthHttpError(engine.invalidPayload(result.error.issues, requestIdOf(c as Context<E>)));
+        throw new AuthHttpError(engine.invalidPayload(result.error, requestIdOf(c as Context<E>)));
       },
     });
 
@@ -171,14 +186,14 @@ export function createAuthModule<
 
   router.openapi(routes.signUp, async c => {
     const hookCtx = await hookContext(c);
-    const input = engine.payloadSchemas.signUp.parse(c.req.valid('json'));
+    const input = c.req.valid('json') as TSignUpInput;
 
     return send(c, unwrap(await engine.signUp(hookCtx, input)));
   });
 
   router.openapi(routes.signIn, async c => {
     const hookCtx = await hookContext(c);
-    const input = engine.payloadSchemas.signIn.parse(c.req.valid('json'));
+    const input = c.req.valid('json') as TSignInInput;
 
     return send(c, unwrap(await engine.signIn(hookCtx, input)));
   });

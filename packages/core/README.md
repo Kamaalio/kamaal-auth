@@ -7,10 +7,12 @@ It does not depend on an auth library, a server framework, or a database. Use th
 ## Install
 
 ```sh
-npm install @kamaalio/kamaal-auth-core zod jose @asteasolutions/zod-to-openapi
+npm install @kamaalio/kamaal-auth-core jose
 ```
 
-Node.js 24 or newer is required.
+Node.js 24 or newer is required. Zod is not required — the package ships its own default schemas built with it
+internally, but `payloadSchemas`, `errorSchemas`, and `sessionExtras` each take any
+[Standard Schema](https://standardschema.dev) library.
 
 ## Define your hooks
 

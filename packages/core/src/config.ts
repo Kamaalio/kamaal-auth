@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 
 import type { StatusCode } from './constants.js';
 import type { AuthErrorRenderer } from './errors/index.js';
@@ -44,7 +44,7 @@ export interface AuthConfig {
    * `ValidationErrorResponse`, otherwise the same component name gets registered twice.
    */
   errorSchemas?: {
-    error?: z.ZodType;
-    validation?: z.ZodType;
+    error?: StandardSchemaV1;
+    validation?: StandardSchemaV1;
   };
 }
