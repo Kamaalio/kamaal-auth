@@ -21,7 +21,9 @@ async function main() {
   const packageJSON = JSON.parse(await fs.readFile(packageJSONPath, 'utf8'));
   const version = argumentVersion != null && argumentVersion !== 'null' ? argumentVersion : packageJSON.version;
   const modified = { ...packageJSON, version, dependencies: pinWorkspaceDependencies(packageJSON, version) };
-  if (modified.dependencies == null) delete modified.dependencies;
+  if (modified.dependencies == null) {
+    delete modified.dependencies;
+  }
 
   await fs.writeFile(packageJSONPath, `${JSON.stringify(modified, null, 2)}\n`);
   const endTime = performance.now();
@@ -33,7 +35,9 @@ function pinWorkspaceDependencies(
   version: string,
 ): Record<string, string> | undefined {
   const dependencies = packageJSON.dependencies;
-  if (dependencies == null) return undefined;
+  if (dependencies == null) {
+    return undefined;
+  }
 
   return Object.fromEntries(
     Object.entries(dependencies).map(([name, range]) => [

@@ -6,7 +6,8 @@ import { AUTH_EVENTS } from './logging/index.js';
 import { STATUS_CODES } from './constants.js';
 import { AuthError, type AuthErrorRenderer, SessionNotFound } from './errors/index.js';
 import type { AuthHookContext, AuthHooks } from './hooks/types.js';
-import { bearerTokenFrom, getCredentialKind, toISO8601String } from './utils/index.js';
+import type { JsonValue } from './json-value.js';
+import { bearerTokenFrom, describeErrorKind, getCredentialKind, toISO8601String } from './utils/index.js';
 
 export interface AuthSessionResponse {
   session: { expires_at: string; created_at: string; updated_at: string };
@@ -16,7 +17,7 @@ export interface AuthSessionResponse {
     email: string;
     email_verified: boolean;
     name: string;
-    [key: string]: unknown;
+    [key: string]: JsonValue;
   };
 }
 
@@ -59,7 +60,9 @@ export async function resolveSession(
   options: SessionResolverOptions,
 ): Promise<AuthSessionResponse> {
   const fromJwt = await resolveSessionFromJwt(c, options);
-  if (fromJwt != null) return fromJwt;
+  if (fromJwt != null) {
+    return fromJwt;
+  }
 
   return resolveSessionFromHook(c, options);
 }
@@ -69,7 +72,9 @@ async function resolveSessionFromJwt(
   options: SessionResolverOptions,
 ): Promise<AuthSessionResponse | null> {
   const token = bearerTokenFrom(c.headers);
-  if (token == null) return null;
+  if (token == null) {
+    return null;
+  }
 
   const keys = await getVerificationKeys(c, options);
 
@@ -85,8 +90,8 @@ async function resolveSessionFromJwt(
       {
         event: AUTH_EVENTS.jwtVerification,
         outcome: 'failure',
-        error_name: error instanceof Error ? error.name : typeof error,
-        error_code: error instanceof Error ? error.name : typeof error,
+        error_name: describeErrorKind(error),
+        error_code: describeErrorKind(error),
         credential_kind: getCredentialKind(c.headers),
       },
       'Authentication token verification failed.',
@@ -189,7 +194,9 @@ async function resolveSessionFromHook(
 }
 
 async function getVerificationKeys(c: AuthHookContext, options: SessionResolverOptions): Promise<JWTVerifyGetKey> {
-  if (options.config.isTest !== true) return options.remoteJwks;
+  if (options.config.isTest !== true) {
+    return options.remoteJwks;
+  }
 
   const result = await options.hooks.verificationKeys?.(c);
   if (result == null) {

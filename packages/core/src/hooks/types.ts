@@ -1,3 +1,5 @@
+import type { JWK } from 'jose';
+
 import type { AuthLogger } from '../logging/index.js';
 
 /**
@@ -100,7 +102,7 @@ export interface IssuedToken {
 }
 
 export interface VerificationKeys {
-  keys: ReadonlyArray<Record<string, unknown>>;
+  keys: ReadonlyArray<JWK>;
 }
 
 /**

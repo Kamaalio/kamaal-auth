@@ -15,6 +15,7 @@ import type {
   SessionLookupResult,
   VerificationKeys,
 } from '../hooks/types.js';
+import type { JsonValue } from '../json-value.js';
 import { bearerTokenFrom } from '../utils/index.js';
 
 export const SESSION_COOKIE_NAME = 'better-auth.session_token';
@@ -41,7 +42,7 @@ export interface InMemoryAuthStore {
   /** Signs a JWT for an existing session. Useful for building an expired or otherwise hand-crafted token in a test. */
   signToken(
     sessionToken: string,
-    overrides?: { claims?: Record<string, unknown>; expiresInSeconds?: number },
+    overrides?: { claims?: Record<string, JsonValue | undefined>; expiresInSeconds?: number },
   ): Promise<string>;
   publicJwk: JWK;
 }
@@ -73,13 +74,17 @@ export async function createInMemoryAuth(options: InMemoryAuthOptions = {}): Pro
 
   async function signToken(
     sessionToken: string,
-    overrides?: { claims?: Record<string, unknown>; expiresInSeconds?: number },
+    overrides?: { claims?: Record<string, JsonValue | undefined>; expiresInSeconds?: number },
   ): Promise<string> {
     const session = sessions.get(sessionToken);
-    if (session == null) throw new Error(`Unknown session token: ${sessionToken}`);
+    if (session == null) {
+      throw new Error(`Unknown session token: ${sessionToken}`);
+    }
 
     const user = findUserById(session.userId);
-    if (user == null) throw new Error(`Unknown user: ${session.userId}`);
+    if (user == null) {
+      throw new Error(`Unknown user: ${session.userId}`);
+    }
 
     const nowInSeconds = Math.floor(Date.now() / 1000);
 
@@ -103,7 +108,9 @@ export async function createInMemoryAuth(options: InMemoryAuthOptions = {}): Pro
 
   function findUserById(id: string): StoredUser | null {
     for (const user of users.values()) {
-      if (user.id === id) return user;
+      if (user.id === id) {
+        return user;
+      }
     }
 
     return null;
@@ -111,10 +118,14 @@ export async function createInMemoryAuth(options: InMemoryAuthOptions = {}): Pro
 
   function resolveSessionToken(c: AuthHookContext): string | null {
     const bearer = bearerTokenFrom(c.headers);
-    if (bearer != null) return bearer;
+    if (bearer != null) {
+      return bearer;
+    }
 
     const cookie = c.headers.get('Cookie');
-    if (cookie == null) return null;
+    if (cookie == null) {
+      return null;
+    }
 
     return cookie.match(new RegExp(`${SESSION_COOKIE_NAME}=([^;]+)`))?.[1] ?? null;
   }
@@ -183,7 +194,9 @@ export async function createInMemoryAuth(options: InMemoryAuthOptions = {}): Pro
 
     async signOut(c) {
       const sessionToken = resolveSessionToken(c);
-      if (sessionToken != null) sessions.delete(sessionToken);
+      if (sessionToken != null) {
+        sessions.delete(sessionToken);
+      }
 
       // Mirrors how a real auth library ends a cookie session: set the same cookie, already expired.
       const headers = new Headers();
@@ -194,14 +207,22 @@ export async function createInMemoryAuth(options: InMemoryAuthOptions = {}): Pro
 
     async getSession(c): Promise<AuthHookResult<SessionLookupResult<AuthUser> | null>> {
       const sessionToken = resolveSessionToken(c);
-      if (sessionToken == null) return { ok: true, value: null };
+      if (sessionToken == null) {
+        return { ok: true, value: null };
+      }
 
       const session = sessions.get(sessionToken);
-      if (session == null) return { ok: true, value: null };
-      if (session.expiresAt.getTime() <= Date.now()) return { ok: true, value: null };
+      if (session == null) {
+        return { ok: true, value: null };
+      }
+      if (session.expiresAt.getTime() <= Date.now()) {
+        return { ok: true, value: null };
+      }
 
       const user = findUserById(session.userId);
-      if (user == null) return { ok: true, value: null };
+      if (user == null) {
+        return { ok: true, value: null };
+      }
 
       return {
         ok: true,

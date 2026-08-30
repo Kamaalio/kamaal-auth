@@ -6,11 +6,11 @@ import { DEFAULT_REQUEST_ID_HEADER_NAME, STATUS_CODES, type StatusCode } from '.
  * Codes are plain strings so the package never has to import an auth library's error enum. Consumers extend or
  * override this through `AuthConfig.errorStatuses`.
  */
-export const AUTH_ERROR_STATUSES: Record<string, StatusCode> = {
+export const AUTH_ERROR_STATUSES = {
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: STATUS_CODES.CONFLICT,
   INVALID_EMAIL_OR_PASSWORD: STATUS_CODES.UNAUTHORIZED,
   MISSING_OR_NULL_ORIGIN: STATUS_CODES.UNAUTHORIZED,
-};
+} satisfies Record<string, StatusCode>;
 
 export interface AuthErrorInfo {
   status: StatusCode;

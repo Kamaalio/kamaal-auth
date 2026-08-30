@@ -1,8 +1,9 @@
+import type { StandardJSONSchemaV1, StandardSchemaV1 } from '@standard-schema/spec';
 import { StandardOpenAPIHono } from '@kamaalio/hono-standard-openapi';
 import { z } from 'zod';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { AUTH_HEADER_NAMES, parseCredentialHeaders } from '@kamaalio/kamaal-auth-core';
+import { AUTH_HEADER_NAMES, parseCredentialHeaders, type JsonValue } from '@kamaalio/kamaal-auth-core';
 import { SESSION_COOKIE_NAME, createInMemoryAuth, type InMemoryAuth } from '@kamaalio/kamaal-auth-core/testing';
 
 import type { AuthHonoEnv } from './env.js';
@@ -37,11 +38,11 @@ async function createHarness(
   return {
     app,
     auth,
-    request: (path, init) => app.request(new Request(`${ORIGIN}${BASE_PATH}${path}`, init)),
+    request: (path, init) => Promise.resolve(app.request(new Request(`${ORIGIN}${BASE_PATH}${path}`, init))),
   };
 }
 
-function jsonInit(body: unknown, headers?: Record<string, string>): RequestInit {
+function jsonInit(body: JsonValue, headers?: Record<string, string>): RequestInit {
   return {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
@@ -49,7 +50,7 @@ function jsonInit(body: unknown, headers?: Record<string, string>): RequestInit 
   };
 }
 
-async function signUp(harness: Harness, body: unknown = SIGN_UP_BODY): Promise<Response> {
+async function signUp(harness: Harness, body: JsonValue = SIGN_UP_BODY): Promise<Response> {
   return harness.request('/sign-up/email', jsonInit(body));
 }
 
@@ -312,7 +313,7 @@ describe('session extras', () => {
       app,
       auth,
       resolveCalls,
-      request: (path, init) => app.request(new Request(`${ORIGIN}${BASE_PATH}${path}`, init)),
+      request: (path, init) => Promise.resolve(app.request(new Request(`${ORIGIN}${BASE_PATH}${path}`, init))),
     };
   }
 
@@ -376,20 +377,52 @@ describe('session extras', () => {
   });
 });
 
+function isString<T>(value: T): value is T & string {
+  return typeof value === 'string';
+}
+
+/** Checks that `value` is an object with every one of `keys` present as a string property. */
+function isRecordOfStrings<T>(value: T, keys: readonly string[]): value is T & Record<string, string> {
+  if (!(value instanceof Object)) {
+    return false;
+  }
+
+  const entries = new Map(Object.entries(value));
+
+  return keys.every(key => isString(entries.get(key)));
+}
+
 describe('session extras from a non-Zod Standard Schema library', () => {
-  function standardObjectSchema(properties: Record<string, { type: string }>) {
+  function standardObjectSchema(
+    properties: Record<string, { type: string }>,
+  ): StandardSchemaV1<unknown, Record<string, string>> & StandardJSONSchemaV1<unknown, Record<string, string>> {
+    const keys = Object.keys(properties);
+
     return {
       '~standard': {
         jsonSchema: {
-          input: () => ({ properties, required: Object.keys(properties), type: 'object' }),
-          output: () => ({ properties, required: Object.keys(properties), type: 'object' }),
+          input: () => ({ properties, required: keys, type: 'object' }),
+          output: () => ({ properties, required: keys, type: 'object' }),
         },
-        validate: (value: unknown) => ({ value }),
+        validate: value =>
+          isRecordOfStrings(value, keys)
+            ? { value }
+            : { issues: [{ message: `Expected an object with string properties: ${keys.join(', ')}` }] },
         vendor: 'hand-rolled',
         version: 1 as const,
       },
     };
   }
+
+  it('validates a plain object against its declared string properties', () => {
+    const schema = standardObjectSchema({ nickname: { type: 'string' } });
+
+    expect(schema['~standard'].validate({ nickname: 'Ada' })).toEqual({ value: { nickname: 'Ada' } });
+    expect(schema['~standard'].validate({ nickname: 42 })).toMatchObject({
+      issues: [{ message: expect.stringContaining('nickname') }],
+    });
+    expect(schema['~standard'].validate(null)).toMatchObject({ issues: [{ message: expect.any(String) }] });
+  });
 
   it('folds extras into responses and the OpenAPI document without Zod ever validating them', async () => {
     const NicknameSchema = standardObjectSchema({ nickname: { type: 'string' } });
@@ -422,12 +455,18 @@ describe('consumer-supplied router', () => {
     const auth = await createInMemoryAuth();
     const router = new StandardOpenAPIHono<AuthHonoEnv>({
       defaultHook: (result, c) => {
-        if (result.success) return;
+        if (result.success) {
+          return;
+        }
 
         return c.json({ message: 'App envelope', issues: result.error.length }, 422);
       },
     });
-    const module = createAuthModule({ hooks: auth.hooks, config: auth.config, router });
+    const module = createAuthModule({
+      hooks: auth.hooks,
+      config: auth.config,
+      router,
+    });
     const app = new StandardOpenAPIHono<AuthHonoEnv>();
     app.route(BASE_PATH, module.router);
 

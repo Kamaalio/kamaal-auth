@@ -1,6 +1,4 @@
-export type GetRecordValues<T extends Record<string, unknown>> = T[keyof T];
-
-export type StatusCode = GetRecordValues<typeof STATUS_CODES>;
+export type StatusCode = (typeof STATUS_CODES)[keyof typeof STATUS_CODES];
 
 export const STATUS_CODES = {
   OK: 200,

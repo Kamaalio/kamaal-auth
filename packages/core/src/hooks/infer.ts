@@ -39,9 +39,9 @@ export type AuthSessionOf<H> = H extends { getSession: (c: never) => infer R }
     : AuthSession
   : AuthSession;
 
-export type SignUpInputOf<H> = H extends { signUp: (c: never, input: infer I) => unknown } ? I : never;
+export type SignUpInputOf<H> = H extends { signUp: (c: never, input: infer I) => void } ? I : never;
 
-export type SignInInputOf<H> = H extends { signIn: (c: never, input: infer I) => unknown } ? I : never;
+export type SignInInputOf<H> = H extends { signIn: (c: never, input: infer I) => void } ? I : never;
 
 export type CredentialsOf<H> = H extends { signIn: (c: never, input: never) => infer R }
   ? AwaitedSuccess<R> extends { credentials: infer C }
