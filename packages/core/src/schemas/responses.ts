@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const ApiCommonDatetimeShape = z.iso.datetime({ offset: true });
+const ApiCommonDatetimeSchema = z.iso.datetime({ offset: true });
 
 /**
  * Shared so the user block reads the same wherever it is embedded.
@@ -15,16 +15,16 @@ const EXAMPLE_USER = {
   name: 'Test User',
 } as const;
 
-const SESSION_SHAPE = {
-  expires_at: ApiCommonDatetimeShape.meta({
+const SESSION_FIELD_SCHEMAS = {
+  expires_at: ApiCommonDatetimeSchema.meta({
     description: 'Session expiration timestamp',
     example: '2025-10-12T12:08:28.382Z',
   }),
-  created_at: ApiCommonDatetimeShape.meta({
+  created_at: ApiCommonDatetimeSchema.meta({
     description: 'Session creation timestamp',
     example: '2025-10-05T12:08:28.382Z',
   }),
-  updated_at: ApiCommonDatetimeShape.meta({
+  updated_at: ApiCommonDatetimeSchema.meta({
     description: 'Session last update timestamp',
     example: '2025-10-05T12:08:28.382Z',
   }),
@@ -64,7 +64,7 @@ export type BaseUser = z.infer<typeof UserSchema>;
 
 export const SessionResponseSchema = z
   .object({
-    session: z.object(SESSION_SHAPE),
+    session: z.object(SESSION_FIELD_SCHEMAS),
     user: UserSchema,
   })
   .meta({

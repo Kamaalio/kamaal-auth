@@ -24,7 +24,9 @@ export function parseCredentialHeaders(headers: Headers): AuthCredentials | null
   const sessionToken = headers.get(AUTH_HEADER_NAMES.sessionToken);
   const authTokenExpiry = toFiniteNumber(headers.get(AUTH_HEADER_NAMES.authTokenExpiry));
   const sessionUpdateAge = toFiniteNumber(headers.get(AUTH_HEADER_NAMES.sessionUpdateAge));
-  if (authToken == null || sessionToken == null || authTokenExpiry == null || sessionUpdateAge == null) return null;
+  if (authToken == null || sessionToken == null || authTokenExpiry == null || sessionUpdateAge == null) {
+    return null;
+  }
 
   return {
     authToken,
@@ -35,7 +37,9 @@ export function parseCredentialHeaders(headers: Headers): AuthCredentials | null
 }
 
 function toFiniteNumber(value: string | null): number | null {
-  if (value == null) return null;
+  if (value == null) {
+    return null;
+  }
 
   const parsed = Number(value);
 

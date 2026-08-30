@@ -11,6 +11,8 @@ export {
 
 export type { AuthConfig, AuthJwtConfig, AuthSessionConfig } from './config.js';
 
+export type { JsonPrimitive, JsonValue } from './json-value.js';
+
 export {
   AUTH_ERROR_STATUSES,
   AuthError,

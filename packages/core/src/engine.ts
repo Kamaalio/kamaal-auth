@@ -13,10 +13,11 @@ import type {
   EmailPasswordSignInInput,
   EmailPasswordSignUpInput,
 } from './hooks/types.js';
+import type { JsonValue } from './json-value.js';
 import { AUTH_EVENTS, type AuthEvent } from './logging/index.js';
 import { EmailPasswordSignInSchema, EmailPasswordSignUpSchema } from './schemas/payloads.js';
 import { type AuthSchemas, buildAuthSchemas } from './schemas/responses.js';
-import { type AuthSessionResponse, resolveSession } from './session.js';
+import { type AuthSessionResponse, type SessionResolverOptions, resolveSession } from './session.js';
 import { bearerTokenFrom, getCredentialKind, toISO8601String } from './utils/index.js';
 
 /**
@@ -27,7 +28,7 @@ import { bearerTokenFrom, getCredentialKind, toISO8601String } from './utils/ind
  */
 export interface AuthResponsePayload<S extends StatusCode = StatusCode> {
   status: S;
-  body: unknown;
+  body: JsonValue;
   headers?: Headers | undefined;
 }
 
@@ -42,7 +43,13 @@ type OkPayload = AuthResponsePayload<typeof STATUS_CODES.OK>;
 
 type CreatedPayload = AuthResponsePayload<typeof STATUS_CODES.CREATED>;
 
-export interface SessionExtras<TExtrasSchema extends StandardSchemaV1 = StandardSchemaV1, TLocals = unknown> {
+export interface SessionExtras<
+  TExtrasSchema extends StandardSchemaV1<unknown, Record<string, JsonValue>> = StandardSchemaV1<
+    unknown,
+    Record<string, JsonValue>
+  >,
+  TLocals = unknown,
+> {
   /**
    * Folded into the user object of every session and auth response, and into the OpenAPI document.
    *
@@ -61,7 +68,7 @@ export interface CreateAuthEngineOptions<
   TUser extends AuthUser,
   TSignUpInput extends EmailPasswordSignUpInput,
   TSignInInput extends EmailPasswordSignInInput,
-  TExtrasSchema extends StandardSchemaV1,
+  TExtrasSchema extends StandardSchemaV1<unknown, Record<string, JsonValue>>,
   TLocals,
 > {
   hooks: AuthHooks<TUser, TSignUpInput, TSignInInput, TLocals>;
@@ -71,8 +78,8 @@ export interface CreateAuthEngineOptions<
    * validates every field the hook expects. Any Standard Schema library works.
    */
   payloadSchemas?: {
-    signUp?: StandardSchemaV1<unknown, TSignUpInput>;
-    signIn?: StandardSchemaV1<unknown, TSignInInput>;
+    signUp: StandardSchemaV1<unknown, TSignUpInput>;
+    signIn: StandardSchemaV1<unknown, TSignInInput>;
   };
   sessionExtras?: SessionExtras<TExtrasSchema, TLocals>;
 }
@@ -118,29 +125,52 @@ export function createAuthEngine<
   TUser extends AuthUser,
   TSignUpInput extends EmailPasswordSignUpInput,
   TSignInInput extends EmailPasswordSignInInput,
-  TExtrasSchema extends StandardSchemaV1 = StandardSchemaV1,
+  TExtrasSchema extends StandardSchemaV1<unknown, Record<string, JsonValue>> = StandardSchemaV1<
+    unknown,
+    Record<string, JsonValue>
+  >,
   TLocals = unknown,
 >(
-  options: CreateAuthEngineOptions<TUser, TSignUpInput, TSignInInput, TExtrasSchema, TLocals>,
-): AuthEngine<TSignUpInput, TSignInInput, TLocals> {
+  options: CreateAuthEngineOptions<TUser, TSignUpInput, TSignInInput, TExtrasSchema, TLocals> & {
+    payloadSchemas: {
+      signUp: StandardSchemaV1<unknown, TSignUpInput>;
+      signIn: StandardSchemaV1<unknown, TSignInInput>;
+    };
+  },
+): AuthEngine<TSignUpInput, TSignInInput, TLocals>;
+export function createAuthEngine<
+  TUser extends AuthUser,
+  TExtrasSchema extends StandardSchemaV1<unknown, Record<string, JsonValue>> = StandardSchemaV1<
+    unknown,
+    Record<string, JsonValue>
+  >,
+  TLocals = unknown,
+>(
+  options: CreateAuthEngineOptions<TUser, EmailPasswordSignUpInput, EmailPasswordSignInInput, TExtrasSchema, TLocals>,
+): AuthEngine<EmailPasswordSignUpInput, EmailPasswordSignInInput, TLocals>;
+export function createAuthEngine<
+  TUser extends AuthUser,
+  TExtrasSchema extends StandardSchemaV1<unknown, Record<string, JsonValue>>,
+  TLocals,
+>(
+  options: CreateAuthEngineOptions<TUser, EmailPasswordSignUpInput, EmailPasswordSignInInput, TExtrasSchema, TLocals>,
+): AuthEngine<EmailPasswordSignUpInput, EmailPasswordSignInInput, TLocals> {
   const { hooks, config } = options;
   const render = config.errorResponse ?? defaultAuthErrorRenderer;
-  const errorStatuses = { ...AUTH_ERROR_STATUSES, ...config.errorStatuses };
+  const errorStatuses = new Map<string, StatusCode>([
+    ...Object.entries(AUTH_ERROR_STATUSES),
+    ...Object.entries(config.errorStatuses ?? {}),
+  ]);
   const schemas = buildAuthSchemas();
   const remoteJwks = createRemoteJWKSet(config.jwt.jwksUrl);
-  const resolverOptions = { hooks: hooks as AuthHooks, config, render, remoteJwks };
-
+  const resolverOptions: SessionResolverOptions = { hooks, config, render, remoteJwks };
   const payloadSchemas = {
-    signUp:
-      options.payloadSchemas?.signUp ??
-      (EmailPasswordSignUpSchema as unknown as StandardSchemaV1<unknown, TSignUpInput>),
-    signIn:
-      options.payloadSchemas?.signIn ??
-      (EmailPasswordSignInSchema as unknown as StandardSchemaV1<unknown, TSignInInput>),
+    signUp: options.payloadSchemas?.signUp ?? EmailPasswordSignUpSchema,
+    signIn: options.payloadSchemas?.signIn ?? EmailPasswordSignInSchema,
   };
 
   function failure(error: AuthHookFailure, requestId: string | undefined): AuthError {
-    const status: StatusCode = errorStatuses[error.code] ?? STATUS_CODES.INTERNAL_SERVER_ERROR;
+    const status: StatusCode = errorStatuses.get(error.code) ?? STATUS_CODES.INTERNAL_SERVER_ERROR;
 
     return new AuthError(
       { status, code: error.code, message: error.message, headers: error.headers, requestId },
@@ -153,11 +183,13 @@ export function createAuthEngine<
     user: AuthSessionResponse['user'],
   ): Promise<AuthSessionResponse['user']> {
     const sessionExtras = options.sessionExtras;
-    if (sessionExtras == null) return user;
+    if (sessionExtras == null) {
+      return user;
+    }
 
     const extras = await sessionExtras.resolve(c, { userId: user.id });
 
-    return { ...user, ...(extras as Record<string, unknown>) };
+    return { ...user, ...extras };
   }
 
   /** Only {@link AuthError} is an expected failure; anything else is a bug and keeps unwinding. */
@@ -165,7 +197,9 @@ export function createAuthEngine<
     try {
       return { ok: true, value: await run() };
     } catch (error) {
-      if (error instanceof AuthError) return { ok: false, error };
+      if (error instanceof AuthError) {
+        return { ok: false, error };
+      }
 
       throw error;
     }
@@ -173,10 +207,14 @@ export function createAuthEngine<
 
   async function authenticated<S extends StatusCode>(
     c: AuthHookContext<TLocals>,
-    result: Awaited<ReturnType<AuthHooks<TUser, TSignUpInput, TSignInInput, TLocals>['signIn']>>,
+    result: Awaited<
+      ReturnType<AuthHooks<TUser, EmailPasswordSignUpInput, EmailPasswordSignInInput, TLocals>['signIn']>
+    >,
     args: { status: S; event: AuthEvent; message: string; routePath: string },
   ): Promise<AuthOutcome<AuthResponsePayload<S>>> {
-    if (!result.ok) return { ok: false, error: failure(result.error, c.requestId) };
+    if (!result.ok) {
+      return { ok: false, error: failure(result.error, c.requestId) };
+    }
 
     const { user, credentials } = result.value;
     c.logger.info(
@@ -232,7 +270,9 @@ export function createAuthEngine<
 
     async signOut(c) {
       const result = await hooks.signOut(c);
-      if (!result.ok) return { ok: false, error: failure(result.error, c.requestId) };
+      if (!result.ok) {
+        return { ok: false, error: failure(result.error, c.requestId) };
+      }
 
       c.logger.info(
         {
@@ -248,7 +288,7 @@ export function createAuthEngine<
     },
 
     sessionResponse(session) {
-      return { status: STATUS_CODES.OK, body: session };
+      return { status: STATUS_CODES.OK, body: { ...session } };
     },
 
     async issueToken(c) {
@@ -351,7 +391,9 @@ function buildTokenHeaders(args: {
 function expiryFromJwt(token: string, config: AuthConfig): number {
   try {
     const exp = decodeJwt(token).exp;
-    if (exp != null) return exp - Math.floor(Date.now() / 1000);
+    if (exp != null) {
+      return exp - Math.floor(Date.now() / 1000);
+    }
   } catch {
     // Fall through to the configured default.
   }

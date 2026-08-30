@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "oxc"],
+  "jsPlugins": [{ "name": "anti-slop", "specifier": "@kamaal111/oxlint-plugin-anti-slop" }],
   "categories": {
     "correctness": "error"
   },
@@ -12,9 +13,11 @@
   },
   "ignorePatterns": ["**/dist/**/*", "Sources/**/*", "Tests/**/*", ".build/**/*"],
   "rules": {
+    "curly": "error",
     "no-array-constructor": "error",
     "typescript/no-deprecated": "error",
     "typescript/consistent-type-imports": "error",
+    "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }],
     "typescript/ban-ts-comment": "error",
     "typescript/no-duplicate-enum-values": "error",
     "typescript/no-empty-object-type": "error",
@@ -22,6 +25,7 @@
     "typescript/no-extra-non-null-assertion": "error",
     "typescript/no-misused-new": "error",
     "typescript/no-namespace": "error",
+    "typescript/no-non-null-assertion": "error",
     "typescript/no-non-null-asserted-optional-chain": "error",
     "typescript/no-require-imports": "error",
     "typescript/no-this-alias": "error",
@@ -31,7 +35,22 @@
     "typescript/no-wrapper-object-types": "error",
     "typescript/prefer-as-const": "error",
     "typescript/prefer-namespace-keyword": "error",
-    "typescript/triple-slash-reference": "error"
+    "typescript/triple-slash-reference": "error",
+    "anti-slop/no-chained-type-assertions": "error",
+    "anti-slop/no-conditional-empty-object-spread": "error",
+    "anti-slop/no-known-value-widening": "error",
+    "anti-slop/no-module-mocking": "error",
+    "anti-slop/no-object-parameters": "error",
+    "anti-slop/no-reflect-apply": "error",
+    "anti-slop/no-reflect-get": "error",
+    "anti-slop/no-runtime-typeof": ["error", { "allowInTypeGuards": true }],
+    "anti-slop/no-shape-in-symbol-names": "error",
+    "anti-slop/no-unknown-parameters": "error",
+    "anti-slop/no-unknown-returns": "error",
+    "anti-slop/no-unknown-type-aliases": "error",
+    "anti-slop/no-unsafe-dictionary-type": "error",
+    "anti-slop/no-widen-then-assert": "error",
+    "anti-slop/require-safety-comment-for-type-assertion": "error"
   },
   "overrides": [
     {

@@ -32,13 +32,17 @@ describe('createAuthEngine', () => {
   }
 
   function expectOk<T>(outcome: AuthOutcome<T>): T {
-    if (!outcome.ok) throw new Error(`Expected an ok outcome, got ${outcome.error.code}`);
+    if (!outcome.ok) {
+      throw new Error(`Expected an ok outcome, got ${outcome.error.code}`);
+    }
 
     return outcome.value;
   }
 
   function expectError<T>(outcome: AuthOutcome<T>): AuthError {
-    if (outcome.ok) throw new Error('Expected a failed outcome');
+    if (outcome.ok) {
+      throw new Error('Expected a failed outcome');
+    }
 
     return outcome.error;
   }
@@ -46,7 +50,9 @@ describe('createAuthEngine', () => {
   async function signUp(): Promise<AuthCredentials> {
     const payload = expectOk(await engine.signUp(contextOf(), SIGN_UP_INPUT));
     const credentials = parseCredentialHeaders(payload.headers ?? new Headers());
-    if (credentials == null) throw new Error('Sign up did not return credentials');
+    if (credentials == null) {
+      throw new Error('Sign up did not return credentials');
+    }
 
     return credentials;
   }

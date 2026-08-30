@@ -11,20 +11,40 @@ import {
   TokenHeaders,
 } from '@kamaalio/kamaal-auth-core';
 
-export interface RouteBuilderOptions {
+export interface RouteBuilderOptions<
+  TSignUpSchema extends SchemaOrReference = SchemaOrReference,
+  TSignInSchema extends SchemaOrReference = SchemaOrReference,
+  TAuthResponseSchema extends SchemaOrReference = SchemaOrReference,
+  TSessionResponseSchema extends SchemaOrReference = SchemaOrReference,
+  TTokenResponseSchema extends SchemaOrReference = SchemaOrReference,
+> {
   tag: string;
   securitySchemeName: string;
   errorSchema: SchemaOrReference;
   validationErrorSchema: SchemaOrReference;
-  signUpSchema: SchemaOrReference;
-  signInSchema: SchemaOrReference;
-  authResponseSchema: SchemaOrReference;
-  sessionResponseSchema: SchemaOrReference;
-  tokenResponseSchema: SchemaOrReference;
+  signUpSchema: TSignUpSchema;
+  signInSchema: TSignInSchema;
+  authResponseSchema: TAuthResponseSchema;
+  sessionResponseSchema: TSessionResponseSchema;
+  tokenResponseSchema: TTokenResponseSchema;
   sessionMiddleware: MiddlewareHandler;
 }
 
-export function buildAuthRoutes(options: RouteBuilderOptions) {
+export function buildAuthRoutes<
+  TSignUpSchema extends SchemaOrReference,
+  TSignInSchema extends SchemaOrReference,
+  TAuthResponseSchema extends SchemaOrReference,
+  TSessionResponseSchema extends SchemaOrReference,
+  TTokenResponseSchema extends SchemaOrReference,
+>(
+  options: RouteBuilderOptions<
+    TSignUpSchema,
+    TSignInSchema,
+    TAuthResponseSchema,
+    TSessionResponseSchema,
+    TTokenResponseSchema
+  >,
+) {
   const { errorSchema, validationErrorSchema } = options;
   const tags = [options.tag || AUTH_OPENAPI_TAG];
 
