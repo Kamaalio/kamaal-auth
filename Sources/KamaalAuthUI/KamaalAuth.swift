@@ -85,7 +85,7 @@ public final class KamaalAuth {
         let identifier = UUID()
         let currentSessionState = currentSessionState
 
-        return AsyncStream(bufferingPolicy: .bufferingNewest(1)) { [weak self] continuation in
+        return AsyncStream(bufferingPolicy: .unbounded) { [weak self] continuation in
             continuation.yield(currentSessionState)
             self?.sessionStateContinuations[identifier] = continuation
             continuation.onTermination = { [weak self] _ in
