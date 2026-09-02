@@ -1,0 +1,21 @@
+Sources/KamaalAuthUI/KamaalAuth.swift
+  s_2c29c9fa7dd03b::t_56ff05efcb651f 88
+Tests/KamaalAuthUITests/KamaalAuthTests.swift
+  s_2c29c9fa7dd03b::t_cea04c9d16c1b4 66-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "15ccacb3a1e62eac6b707932daa58a9e8206cdfc",
+  "prompts": {},
+  "sessions": {
+    "s_2c29c9fa7dd03b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06384-8731-7992-9cb8-8358146e3db0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  }
+}
