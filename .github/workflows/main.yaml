@@ -87,6 +87,14 @@ jobs:
       - name: Git - Checkout
         uses: actions/checkout@v7
 
+      - name: Restore SwiftPM repositories
+        uses: actions/cache@v5
+        with:
+          path: |
+            .build/checkouts
+            .build/repositories
+          key: ${{ runner.os }}-swiftpm-${{ hashFiles('Package.resolved') }}
+
       - name: Set up just
         uses: extractions/setup-just@v4
 
