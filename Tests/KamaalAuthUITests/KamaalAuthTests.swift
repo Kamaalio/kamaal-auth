@@ -3,7 +3,8 @@ import Testing
 
 @testable import KamaalAuthUI
 
-@Suite("KamaalAuth Tests")
+// Session state streams never finish, so a missed transition would otherwise hang the whole test run.
+@Suite("KamaalAuth Tests", .timeLimit(.minutes(1)))
 @MainActor
 struct KamaalAuthTests {
     @Test
