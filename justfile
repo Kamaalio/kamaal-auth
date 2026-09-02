@@ -47,7 +47,7 @@ test: test-node test-swift
 test-node: prepare-node
     {{ PNR }} test
 
-# Run Swift package tests on macOS and iOS
+# Run the full suite on macOS and iOS-only snapshots in the simulator.
 test-swift: test-swift-macos test-swift-ios
 
 # Run Swift package tests on macOS
@@ -61,11 +61,12 @@ test-swift-macos:
         swift test --skip 'AuthSignInScreenSnapshotTests' -Xswiftc -warnings-as-errors
     fi
 
-# Run Swift package tests on iOS
+# Run UIKit snapshot coverage on iOS; the remaining tests run on macOS above.
 test-swift-ios:
     ./scripts/with-ios-simulator-lock \
         -scheme KamaalAuth-Package \
         -destination "{{ SWIFT_IOS_TEST_DESTINATION }}" \
+        -only-testing:KamaalAuthUITests/AuthSignInScreenSnapshotTests \
         test
 
 # Typecheck the npm packages
