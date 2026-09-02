@@ -48,6 +48,63 @@ struct KamaalAuthTests {
         #expect((try? result.get()) == nil)
     }
 
+    @Test
+    func `Replays unauthenticated state when credentials are missing`() async {
+        let auth = KamaalAuth(
+            client: PreviewKamaalAuthClient(), configuration: configuration,
+            cachedSessionStore: CachedUserSessionStoreSpy())
+        var states = auth.sessionStates().makeAsyncIterator()
+
+        #expect(await states.next() == .unauthenticated)
+    }
+
+    @Test
+    func `Publishes validation and authenticated states when stored credentials are valid`() async {
+        let auth = KamaalAuth(
+            client: PreviewKamaalAuthClient(hasValidCredentials: true), configuration: configuration,
+            cachedSessionStore: CachedUserSessionStoreSpy())
+        var states = auth.sessionStates().makeAsyncIterator()
+
+        #expect(await states.next() == .validatingCredentials)
+        #expect(
+            await states.next()
+                == .authenticated(
+                    .init(
+                        name: "John Doe",
+                        email: "john.doe@example.com",
+                        expiresAt: .distantFuture,
+                    ))
+        )
+    }
+
+    @Test(arguments: [AuthSignInScreenModel.Mode.login, .signUp])
+    func `Publishes authenticated state after successful interactive authentication`(
+        _ mode: AuthSignInScreenModel.Mode,
+    ) async throws {
+        let auth = KamaalAuth(
+            client: PreviewKamaalAuthClient(), configuration: configuration,
+            cachedSessionStore: CachedUserSessionStoreSpy())
+        var states = auth.sessionStates().makeAsyncIterator()
+        _ = await states.next()
+
+        let result: Result<Void, KamaalAuthOperationError>
+        switch mode {
+        case .login: result = await auth.signIn(email: "jane@example.com", password: "password123")
+        case .signUp: result = await auth.signUp(name: "Jane Doe", email: "jane@example.com", password: "password123")
+        }
+
+        try result.get()
+        #expect(
+            await states.next()
+                == .authenticated(
+                    .init(
+                        name: "John Doe",
+                        email: "john.doe@example.com",
+                        expiresAt: .distantFuture,
+                    ))
+        )
+    }
+
     private var configuration: KamaalAuthConfiguration { .init(appName: "Test") }
 }
 
