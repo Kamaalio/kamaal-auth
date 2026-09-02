@@ -1,0 +1,21 @@
+Sources/KamaalAuthUI/KamaalAuth.swift
+  s_f0c792f54bcb7c::t_0d0b947f3fd70e 88
+Tests/KamaalAuthUITests/KamaalAuthTests.swift
+  s_f0c792f54bcb7c::t_d138992e697ca4 6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c00ab88d88805670683e3f4b1118d9d7f83e61cf",
+  "prompts": {},
+  "sessions": {
+    "s_f0c792f54bcb7c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82cc013b-e07c-494c-aeca-2762e1ad0ac3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Kamaal Farah <kamaal.f1@gmail.com>"
+    }
+  }
+}
