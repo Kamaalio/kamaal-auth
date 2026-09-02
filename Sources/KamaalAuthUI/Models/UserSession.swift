@@ -7,7 +7,7 @@ import KamaalAuthCore
 ///   ```swift
 ///   let session = UserSession(name: "Jane Doe", email: "jane@example.com", expiresAt: .distantFuture)
 ///   ```
-public struct UserSession: Hashable, Codable, Expirable {
+public struct UserSession: Hashable, Codable, Expirable, Sendable {
     /// The authenticated person's display name.
     public let name: String
     /// The authenticated person's email address.

@@ -20,6 +20,9 @@ public final class KamaalAuth {
     let configuration: KamaalAuthConfiguration
 
     @ObservationIgnored private var cachedSessionStore: CachedUserSessionStore
+    @ObservationIgnored private var sessionStateContinuations:
+        [UUID: AsyncStream<KamaalAuthSessionState>.Continuation] = [:]
+    @ObservationIgnored private var currentSessionState: KamaalAuthSessionState
 
     /// The authenticated session loaded from the client or its same-day cache.
     public private(set) var session: UserSession?
@@ -46,14 +49,14 @@ public final class KamaalAuth {
         self.client = client
         self.configuration = configuration
         self.cachedSessionStore = cachedSessionStore
-        if client.hasValidCredentials {
-            initiallyValidatingToken = true
+        initiallyValidatingToken = client.hasValidCredentials
+        currentSessionState = client.hasValidCredentials ? .validatingCredentials : .unauthenticated
+        if initiallyValidatingToken {
             Task {
-                await loadSession()
+                let result = await loadSession()
                 initiallyValidatingToken = false
+                if case .failure = result { setSessionState(.unauthenticated) }
             }
-        } else {
-            initiallyValidatingToken = false
         }
     }
 
@@ -64,6 +67,32 @@ public final class KamaalAuth {
     ///   if auth.isLoggedIn { showAuthenticatedContent() }
     ///   ```
     public var isLoggedIn: Bool { session != nil }
+
+    /// Returns a replaying stream of this instance's authentication lifecycle.
+    ///
+    /// Each subscriber receives the current state first, then every later state transition. Cancel the consuming task
+    /// when the surrounding feature is no longer needed.
+    ///
+    /// - Returns: A stream beginning with the current ``KamaalAuthSessionState``.
+    ///
+    /// - Example:
+    ///   ```swift
+    ///   for await state in auth.sessionStates() {
+    ///       if case .unauthenticated = state { showSignInPrompt() }
+    ///   }
+    ///   ```
+    public func sessionStates() -> AsyncStream<KamaalAuthSessionState> {
+        let identifier = UUID()
+        let currentSessionState = currentSessionState
+
+        return AsyncStream(bufferingPolicy: .bufferingNewest(1)) { [weak self] continuation in
+            continuation.yield(currentSessionState)
+            self?.sessionStateContinuations[identifier] = continuation
+            continuation.onTermination = { [weak self] _ in
+                Task { @MainActor in self?.removeSessionStateContinuation(identifier) }
+            }
+        }
+    }
 
     /// Signs in with validated credentials, then loads the authenticated session.
     ///
@@ -171,6 +200,18 @@ public final class KamaalAuth {
     private func setSession(_ session: UserSession) {
         self.session = session
         cachedSessionStore.cachedSession = CachedUserSession(session: session, cachedAt: .now)
+        setSessionState(.authenticated(session))
+    }
+
+    private func setSessionState(_ state: KamaalAuthSessionState) {
+        guard currentSessionState != state else { return }
+
+        currentSessionState = state
+        for continuation in sessionStateContinuations.values { continuation.yield(state) }
+    }
+
+    private func removeSessionStateContinuation(_ identifier: UUID) {
+        sessionStateContinuations[identifier] = nil
     }
 
     private func getCachedSessionIfLoadedToday() -> UserSession? {
