@@ -63,7 +63,9 @@ struct KamaalAuthTests {
         let auth = KamaalAuth(
             client: PreviewKamaalAuthClient(hasValidCredentials: true), configuration: configuration,
             cachedSessionStore: CachedUserSessionStoreSpy())
-        var states = auth.sessionStates().makeAsyncIterator()
+        let sessionStates = auth.sessionStates()
+        await yield(until: { !auth.initiallyValidatingToken })
+        var states = sessionStates.makeAsyncIterator()
 
         #expect(await states.next() == .validatingCredentials)
         #expect(
