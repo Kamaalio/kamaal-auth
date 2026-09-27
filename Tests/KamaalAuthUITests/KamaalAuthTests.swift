@@ -106,6 +106,53 @@ struct KamaalAuthTests {
         )
     }
 
+    @Test
+    func `Signs out and clears the session`() async {
+        let cache = CachedUserSessionStoreSpy()
+        let auth = KamaalAuth(
+            client: PreviewKamaalAuthClient(hasValidCredentials: true), configuration: configuration,
+            cachedSessionStore: cache)
+        await yield(until: { !auth.initiallyValidatingToken })
+        #expect(auth.isLoggedIn)
+
+        await auth.signOut()
+
+        #expect(auth.isLoggedIn == false)
+        #expect(auth.session == nil)
+        #expect(cache.cachedSession == nil)
+    }
+
+    @Test
+    func `Clears the local session even when the server sign out fails`() async {
+        let cached = UserSession(name: "Cached", email: "cached@example.com", expiresAt: .distantFuture)
+        let cache = CachedUserSessionStoreSpy(cachedSession: CachedUserSession(session: cached, cachedAt: .now))
+        let auth = KamaalAuth(
+            client: PreviewKamaalAuthClient(outcome: .serverUnavailable, hasValidCredentials: true),
+            configuration: configuration, cachedSessionStore: cache)
+        await yield(until: { !auth.initiallyValidatingToken })
+        #expect(auth.isLoggedIn)
+
+        await auth.signOut()
+
+        #expect(auth.isLoggedIn == false)
+        #expect(cache.cachedSession == nil)
+    }
+
+    @Test
+    func `Publishes unauthenticated state after signing out`() async throws {
+        let auth = KamaalAuth(
+            client: PreviewKamaalAuthClient(), configuration: configuration,
+            cachedSessionStore: CachedUserSessionStoreSpy())
+        var states = auth.sessionStates().makeAsyncIterator()
+        _ = await states.next()
+        try await auth.signIn(email: "jane@example.com", password: "password123").get()
+        _ = await states.next()
+
+        await auth.signOut()
+
+        #expect(await states.next() == .unauthenticated)
+    }
+
     private var configuration: KamaalAuthConfiguration { .init(appName: "Test") }
 }
 

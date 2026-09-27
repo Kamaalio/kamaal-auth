@@ -137,6 +137,25 @@ public final class KamaalAuth {
         }
     }
 
+    /// Signs out on the server, then clears the local session so the auth gate presents sign in again.
+    ///
+    /// Local state is cleared even when the server request fails, so people who ask to sign out always end up signed
+    /// out.
+    ///
+    /// - Example:
+    ///   ```swift
+    ///   await auth.signOut()
+    ///   ```
+    public func signOut() async {
+        if case .failure(let failure) = await client.signOut() {
+            logger.warning("Sign out request failed; clearing the local session anyway; reason=\(failure)")
+        }
+        session = nil
+        cachedSessionStore.cachedSession = nil
+        setSessionState(.unauthenticated)
+        logger.info("Signed out.")
+    }
+
     @discardableResult
     private func loadSession(allowCachedSession: Bool = true) async -> Result<Void, KamaalAuthFeatureSessionError> {
         if allowCachedSession, let cachedSession = getCachedSessionIfLoadedToday() {
