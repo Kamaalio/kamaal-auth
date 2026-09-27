@@ -100,3 +100,24 @@ jobs:
 
       - name: Run tests
         run: just test-swift
+
+      - name: Collect failed Swift snapshots
+        if: failure()
+        run: |
+          mkdir -p "$RUNNER_TEMP/swift-snapshot-failures"
+          find "$TMPDIR" -type f -path '*/AuthSignInScreenFocusedFieldSnapshotTests/*.png' \
+            -exec cp -v {} "$RUNNER_TEMP/swift-snapshot-failures/" \;
+          find "$HOME/Library/Developer/CoreSimulator/Devices" -type f \
+            -path '*/data/tmp/AuthSignInScreenFocusedFieldSnapshotTests/*.png' \
+            -exec cp -v {} "$RUNNER_TEMP/swift-snapshot-failures/" \;
+          find Tests/KamaalAuthUITests/__Snapshots__/AuthSignInScreenFocusedFieldSnapshotTests \
+            -type f -name '*.iPhone-compact-iOS26-*.png' \
+            -exec cp -v {} "$RUNNER_TEMP/swift-snapshot-failures/" \;
+          sw_vers -productVersion
+
+      - name: Upload failed Swift snapshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swift-snapshot-failures
+          path: ${{ runner.temp }}/swift-snapshot-failures

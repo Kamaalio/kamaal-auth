@@ -67,6 +67,7 @@ test-swift-ios:
         -scheme KamaalAuth-Package \
         -destination "{{ SWIFT_IOS_TEST_DESTINATION }}" \
         -only-testing:KamaalAuthUITests/AuthSignInScreenSnapshotTests \
+        -only-testing:KamaalAuthUITests/AuthSignInScreenFocusedFieldSnapshotTests \
         test
 
 # Typecheck the npm packages
