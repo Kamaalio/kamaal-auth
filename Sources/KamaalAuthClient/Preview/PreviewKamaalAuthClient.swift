@@ -83,6 +83,9 @@ public struct PreviewKamaalAuthClient: KamaalAuthClient {
     }
 
     public func signOut() async -> Result<Void, SignOutErrors> {
-        .success(())
+        switch outcome {
+        case .serverUnavailable: .failure(.unknown(status: 503, payload: nil, cause: nil))
+        default: .success(())
+        }
     }
 }
