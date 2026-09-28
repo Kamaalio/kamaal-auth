@@ -11,15 +11,16 @@
 - Run `just` at the repository root to see the available recipes. Use
   `just test-swift` for the macOS and iOS suites; its iOS recipe uses
   `scripts/with-ios-simulator-lock` to serialize simulator access.
+- Swift CI uses the `xcode-27` runner and iPhone 17 on iOS 27.0, matching
+  the default destination in `justfile`.
 - When the Swift test job fails, check the `swift-snapshot-failures` artifact
   on that GitHub Actions run. The workflow uploads it only on failure and
   logs the runner's macOS version with `sw_vers -productVersion`.
-- The collection step currently targets
+- The collection step targets `AuthSignInScreenSnapshotTests` and
   `AuthSignInScreenFocusedFieldSnapshotTests`. It copies failure PNGs from
   the macOS temporary directory and the iOS simulator's `data/tmp` directory.
-  Missing iOS 26 references may also be recorded directly under
-  `Tests/KamaalAuthUITests/__Snapshots__/AuthSignInScreenFocusedFieldSnapshotTests/`;
-  those PNGs are collected too.
+  Missing references recorded directly under
+  `Tests/KamaalAuthUITests/__Snapshots__/` are collected too.
 - Download and inspect the actual PNGs before updating references. Check that
   the focused field is visible in the compact viewport and that the light
   and dark appearances are correct. A failing image can reveal a behavior or

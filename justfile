@@ -7,7 +7,7 @@ alias z := zed
 alias fmt := format
 
 # Update this from `xcrun simctl list devices available` when the simulator changes.
-SWIFT_IOS_TEST_DESTINATION := "platform=iOS Simulator,name=iPhone 17 Pro Max,OS=26.5"
+SWIFT_IOS_TEST_DESTINATION := "platform=iOS Simulator,name=iPhone 17,OS=27.0"
 
 # List available commands
 default:
@@ -52,14 +52,7 @@ test-swift: test-swift-macos test-swift-ios
 
 # Run Swift package tests on macOS
 test-swift-macos:
-    #!/usr/bin/env zsh
-
-    if sw_vers -productVersion | grep -q '^27\.'
-    then
-        swift test -Xswiftc -warnings-as-errors
-    else
-        swift test --skip 'AuthSignInScreenSnapshotTests' -Xswiftc -warnings-as-errors
-    fi
+    swift test -Xswiftc -warnings-as-errors
 
 # Run UIKit snapshot coverage on iOS; the remaining tests run on macOS above.
 test-swift-ios:

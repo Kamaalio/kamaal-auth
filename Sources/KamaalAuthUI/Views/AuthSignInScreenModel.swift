@@ -24,6 +24,8 @@ final class AuthSignInScreenModel {
 
     init(configuration: KamaalAuthConfiguration) { self.configuration = configuration }
 
+    var canAdvanceToSubmit: Bool { !isSubmitting && validationIssues().isEmpty }
+
     func validate(_ field: AuthValidationField) {
         guard mode == .signUp || !field.requiresSignUp else {
             fieldErrors[field] = nil

@@ -68,7 +68,7 @@ jobs:
   quality-swift:
     name: Quality (swift)
     timeout-minutes: 10
-    runs-on: macos-latest
+    runs-on: xcode-27
     steps:
       - name: Git - Checkout
         uses: actions/checkout@v7
@@ -76,13 +76,16 @@ jobs:
       - name: Set up just
         uses: extractions/setup-just@v4
 
+      - name: Show Xcode version
+        run: xcodebuild -version
+
       - name: Check quality
         run: just quality-swift
 
   test-swift:
     name: Test (swift)
     timeout-minutes: 20
-    runs-on: macos-latest
+    runs-on: xcode-27
     steps:
       - name: Git - Checkout
         uses: actions/checkout@v7
@@ -98,6 +101,11 @@ jobs:
       - name: Set up just
         uses: extractions/setup-just@v4
 
+      - name: Show Xcode and simulator
+        run: |
+          xcodebuild -version
+          xcrun simctl list devices available
+
       - name: Run tests
         run: just test-swift
 
@@ -105,14 +113,13 @@ jobs:
         if: failure()
         run: |
           mkdir -p "$RUNNER_TEMP/swift-snapshot-failures"
-          find "$TMPDIR" -type f -path '*/AuthSignInScreenFocusedFieldSnapshotTests/*.png' \
+          find "$TMPDIR" -type f -path '*/AuthSignInScreen*SnapshotTests/*.png' \
             -exec cp -v {} "$RUNNER_TEMP/swift-snapshot-failures/" \;
           find "$HOME/Library/Developer/CoreSimulator/Devices" -type f \
-            -path '*/data/tmp/AuthSignInScreenFocusedFieldSnapshotTests/*.png' \
+            -path '*/data/tmp/AuthSignInScreen*SnapshotTests/*.png' \
             -exec cp -v {} "$RUNNER_TEMP/swift-snapshot-failures/" \;
-          find Tests/KamaalAuthUITests/__Snapshots__/AuthSignInScreenFocusedFieldSnapshotTests \
-            -type f -name '*.iPhone-compact-iOS26-*.png' \
-            -exec cp -v {} "$RUNNER_TEMP/swift-snapshot-failures/" \;
+          git ls-files --others --exclude-standard -z -- 'Tests/KamaalAuthUITests/__Snapshots__/**/*.png' \
+            | xargs -0 -I {} cp -v {} "$RUNNER_TEMP/swift-snapshot-failures/"
           sw_vers -productVersion
 
       - name: Upload failed Swift snapshots
