@@ -8,7 +8,7 @@ import Testing
 @MainActor
 struct AuthSignInScreenFocusedFieldSnapshotTests {
     @Test
-    func `Keeps the focused sign up password visible in a compact viewport`() {
+    func `Keeps the focused sign up password visible in a compact viewport`() async {
         let configuration = KamaalAuthConfiguration(appName: "App")
         let auth = KamaalAuth(
             client: PreviewKamaalAuthClient(), configuration: configuration,
@@ -19,8 +19,9 @@ struct AuthSignInScreenFocusedFieldSnapshotTests {
         model.email = "jane@example.com"
         model.verifyEmail = "jane@example.com"
         #expect(model.mode == .signUp)
+        #expect(!model.canAdvanceToSubmit)
 
-        assertScreenSnapshot(testName: #function, compact: true) {
+        await assertScreenSnapshot(testName: #function, compact: true) {
             NavigationStack { AuthSignInScreen(model: model, initialFocus: .password) }
                 .environment(auth)
         }

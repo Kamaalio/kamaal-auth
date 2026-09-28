@@ -8,11 +8,11 @@ import Testing
 @MainActor
 struct AuthSignInScreenSnapshotTests {
     @Test
-    func `Renders the sign in screen`() {
+    func `Renders the sign in screen`() async {
         let auth = KamaalAuth(
             client: PreviewKamaalAuthClient(), configuration: configuration,
             cachedSessionStore: CachedUserSessionStoreSpy())
-        assertScreenSnapshot(testName: #function) { Text("Signed in").kamaalAuth(auth) }
+        await assertScreenSnapshot(testName: #function) { Text("Signed in").kamaalAuth(auth) }
     }
 
     @Test
@@ -22,7 +22,7 @@ struct AuthSignInScreenSnapshotTests {
             cachedSessionStore: CachedUserSessionStoreSpy())
         _ = await auth.signUp(name: "Jane Doe", email: "jane@example.com", password: "Password123!")
         #expect(auth.isLoggedIn)
-        assertScreenSnapshot(testName: #function) { Text("Signed in").kamaalAuth(auth) }
+        await assertScreenSnapshot(testName: #function) { Text("Signed in").kamaalAuth(auth) }
     }
 
     private var configuration: KamaalAuthConfiguration { .init(appName: "App") }
