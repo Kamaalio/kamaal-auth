@@ -25,6 +25,13 @@ struct AuthSubmitButton: View {
         .controlSize(.large)
         .focusable()
         .focused(focused)
+        .onKeyPress(keys: [.return, .space], phases: [.down, .repeat, .up]) { press in
+            guard press.modifiers.isEmpty else { return .ignored }
+            guard focused.wrappedValue else { return .ignored }
+            guard !isLoading else { return .handled }
+            if press.phase == .down { action() }
+            return .handled
+        }
         .disabled(isLoading)
     }
 }
