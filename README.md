@@ -110,6 +110,15 @@ just prepare    # install modules
 just ready      # quality + tests, both languages
 ```
 
+With Node.js and the Herdr CLI installed, create a worktree with:
+
+```sh
+just herdr-worktree feature/my-change
+```
+
+This validates that the branch is new, fetches `origin/main`, and creates a Herdr worktree from it without changing
+focus. It works from the main checkout or an existing worktree. KamaalAuth needs no per-worktree service ports or `.env` setup.
+
 ## Swift usage
 
 Same idea as the server: you supply the requests, the package supplies everything worth sharing. `import KamaalAuth`

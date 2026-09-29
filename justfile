@@ -13,6 +13,10 @@ SWIFT_IOS_TEST_DESTINATION := "platform=iOS Simulator,name=iPhone 17,OS=27.0"
 default:
     just --list --unsorted
 
+# Create a Herdr worktree on a new branch from the latest origin/main.
+herdr-worktree branch:
+    node scripts/create-herdr-worktree.ts "$branch"
+
 # Generate the shared UI string catalog, then run all verification checks.
 ready: prepare-ready ready-tasks
 
@@ -46,6 +50,11 @@ test: test-node test-swift
 # Run the npm package tests
 test-node: prepare-node
     {{ PNR }} test
+    just test-herdr-worktree
+
+# Test Herdr worktree creation with an isolated Git repository.
+test-herdr-worktree:
+    node --test scripts/create-herdr-worktree.test.ts
 
 # Run the full suite on macOS and iOS-only snapshots in the simulator.
 test-swift: test-swift-macos test-swift-ios
