@@ -1,5 +1,13 @@
 # KamaalAuth Repository Guide
 
+## npm dependencies
+
+- Declare external direct dependencies and development dependencies with
+  `catalog:` and maintain their version ranges in the default catalog in
+  `pnpm-workspace.yaml`. Add new external dependencies to that catalog manually.
+- Keep internal package links as `workspace:*` and public peer dependency
+  compatibility ranges explicit.
+
 ## Pull requests
 
 - Keep one commit per pull request. Fold follow-up fixes and documentation
