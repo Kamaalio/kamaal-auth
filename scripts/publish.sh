@@ -19,6 +19,9 @@ fi
 
 pnpm i
 
+pack_directory=$(mktemp -d)
+trap 'rm -rf "$pack_directory"' EXIT
+
 # Core first: the Hono package's dependency on it is pinned to this same version.
 for package in core hono
 do
@@ -27,6 +30,8 @@ do
   rm -rf "$directory/dist"
   pnpm --filter "./$directory" build
   node scripts/deployment-package-json.ts "$directory" "$VERSION"
+  tarball="$pack_directory/$package.tgz"
+  pnpm --filter "./$directory" pack --out "$tarball"
   # npm CLI performs the GitHub Actions OIDC exchange required by npm trusted publishing.
-  (cd "$directory" && npm publish --access public --no-git-checks)
+  (cd "$directory" && npm publish "$tarball" --access public)
 done

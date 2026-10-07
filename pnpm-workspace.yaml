@@ -1,2 +1,20 @@
 packages:
   - 'packages/*'
+
+catalog:
+  '@kamaal111/oxlint-plugin-anti-slop': '^0.0.4'
+  '@kamaalio/hono-standard-openapi': '^0.0.22'
+  '@oxlint/plugins': '^1.87.0'
+  '@standard-schema/spec': '^1.1.0'
+  '@types/node': '^26.6.4'
+  'better-auth': '^1.7.7'
+  'hono': '^4.13.13'
+  'husky': '^9.1.7'
+  'jose': '^6.2.12'
+  'lint-staged': '^17.6.0'
+  'oxfmt': '^0.72.0'
+  'oxlint': '^1.87.0'
+  'oxlint-tsgolint': '^7.0.2003'
+  'typescript': '^7.0.2'
+  'vitest': '^5.0.3'
+  'zod': '^4.6.5'

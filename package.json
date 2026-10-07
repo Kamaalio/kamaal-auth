@@ -16,14 +16,14 @@
     "release": "sh scripts/publish.sh"
   },
   "devDependencies": {
-    "@kamaal111/oxlint-plugin-anti-slop": "^0.0.4",
-    "@oxlint/plugins": "^1.87.0",
-    "@types/node": "^26.6.4",
-    "husky": "^9.1.7",
-    "lint-staged": "^17.6.0",
-    "oxfmt": "^0.72.0",
-    "oxlint": "^1.87.0",
-    "oxlint-tsgolint": "^7.0.2003"
+    "@kamaal111/oxlint-plugin-anti-slop": "catalog:",
+    "@oxlint/plugins": "catalog:",
+    "@types/node": "catalog:",
+    "husky": "catalog:",
+    "lint-staged": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,mjs,cjs}": "pnpm run lint",
