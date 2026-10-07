@@ -248,6 +248,22 @@ describe('token', () => {
 });
 
 describe('sign out', () => {
+  it('preserves the provider content type and multiple cookies while returning JSON', async () => {
+    const harness = await createHarness();
+    const headers = new Headers({ 'Content-Type': 'application/json; charset=utf-8', 'X-Provider': 'auth' });
+    headers.append('Set-Cookie', 'session=; Max-Age=0; Path=/');
+    headers.append('Set-Cookie', 'refresh=; Max-Age=0; Path=/');
+    vi.spyOn(harness.auth.hooks, 'signOut').mockResolvedValue({ ok: true, value: { headers } });
+
+    const response = await harness.request('/sign-out', { method: 'POST' });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({});
+    expect(response.headers.get('Content-Type')).toBe('application/json; charset=utf-8');
+    expect(response.headers.get('X-Provider')).toBe('auth');
+    expect(response.headers.getSetCookie()).toEqual(['session=; Max-Age=0; Path=/', 'refresh=; Max-Age=0; Path=/']);
+  });
+
   it('forwards the headers the hook returned, so a cookie session actually ends', async () => {
     const harness = await createHarness();
     const credentials = parseCredentialHeaders((await signUp(harness)).headers);

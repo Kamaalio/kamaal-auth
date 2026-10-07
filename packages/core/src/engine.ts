@@ -14,7 +14,7 @@ import type {
 } from './hooks/types.js';
 import type { JsonValue } from './json-value.js';
 import { AUTH_EVENTS, type AuthEvent } from './logging/index.js';
-import { EmailPasswordSignInSchema, EmailPasswordSignUpSchema } from './schemas/payloads.js';
+import { EmailPasswordSignInSchema, EmailPasswordSignUpSchema, type SignOutResponse } from './schemas/payloads.js';
 import { type AuthSchemas, buildAuthSchemas } from './schemas/responses.js';
 import { type AuthSessionResponse, type SessionResolverOptions, resolveSession } from './session.js';
 import { bearerTokenFrom, getCredentialKind, toISO8601String } from './utils/index.js';
@@ -22,12 +22,11 @@ import { bearerTokenFrom, getCredentialKind, toISO8601String } from './utils/ind
 /**
  * What a server adapter turns into a response. Framework-shaped enough to be trivial to send, and nothing more.
  *
- * The status is a type parameter so an adapter that types responses per status code — `hono-standard-openapi`
- * does — still sees the literal each operation actually returns.
+ * Status and body are type parameters so adapters retain the response contract each operation actually returns.
  */
-export interface AuthResponsePayload<S extends StatusCode = StatusCode> {
+export interface AuthResponsePayload<S extends StatusCode = StatusCode, TBody extends JsonValue = JsonValue> {
   status: S;
-  body: JsonValue;
+  body: TBody;
   headers?: Headers | undefined;
 }
 
@@ -38,9 +37,11 @@ export interface AuthResponsePayload<S extends StatusCode = StatusCode> {
  */
 export type AuthOutcome<T> = { ok: true; value: T } | { ok: false; error: AuthError };
 
-type OkPayload = AuthResponsePayload<typeof STATUS_CODES.OK>;
+type AuthResponseBody = { token: string; user: AuthSessionResponse['user'] };
 
-type CreatedPayload = AuthResponsePayload<typeof STATUS_CODES.CREATED>;
+type OkPayload = AuthResponsePayload<typeof STATUS_CODES.OK, AuthResponseBody>;
+
+type CreatedPayload = AuthResponsePayload<typeof STATUS_CODES.CREATED, AuthResponseBody>;
 
 export interface SessionExtras<
   TExtrasSchema extends StandardSchemaV1<unknown, Record<string, JsonValue>> = StandardSchemaV1<
@@ -106,10 +107,19 @@ export interface AuthEngine<
   resolveSession(c: AuthHookContext<TLocals>): Promise<AuthOutcome<AuthSessionResponse>>;
   signUp(c: AuthHookContext<TLocals>, input: TSignUpInput): Promise<AuthOutcome<CreatedPayload>>;
   signIn(c: AuthHookContext<TLocals>, input: TSignInInput): Promise<AuthOutcome<OkPayload>>;
-  signOut(c: AuthHookContext<TLocals>): Promise<AuthOutcome<OkPayload>>;
+  signOut(
+    c: AuthHookContext<TLocals>,
+  ): Promise<AuthOutcome<AuthResponsePayload<typeof STATUS_CODES.OK, SignOutResponse>>>;
   /** Renders an already-resolved session. Pure, because the adapter's middleware has done the work by then. */
-  sessionResponse(session: AuthSessionResponse): OkPayload;
-  issueToken(c: AuthHookContext<TLocals>): Promise<AuthOutcome<OkPayload>>;
+  sessionResponse(
+    session: AuthSessionResponse,
+  ): AuthResponsePayload<
+    typeof STATUS_CODES.OK,
+    { session: AuthSessionResponse['session']; user: AuthSessionResponse['user'] }
+  >;
+  issueToken(
+    c: AuthHookContext<TLocals>,
+  ): Promise<AuthOutcome<AuthResponsePayload<typeof STATUS_CODES.OK, { token: string }>>>;
   jwks(c: AuthHookContext<TLocals>): Promise<Response>;
   /** `null` when the consumer supplied no `fallback` hook, which an adapter should render as a 404. */
   fallback(c: AuthHookContext<TLocals>): Promise<Response | null>;
@@ -197,7 +207,7 @@ export function createAuthEngine<
       ReturnType<AuthHooks<TUser, EmailPasswordSignUpInput, EmailPasswordSignInInput, TLocals>['signIn']>
     >,
     args: { status: S; event: AuthEvent; message: string; routePath: string },
-  ): Promise<AuthOutcome<AuthResponsePayload<S>>> {
+  ): Promise<AuthOutcome<AuthResponsePayload<S, AuthResponseBody>>> {
     if (!result.ok) {
       return { ok: false, error: hookError(result.error, config, c.requestId) };
     }
