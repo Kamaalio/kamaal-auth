@@ -19,7 +19,7 @@ export function getValueFromSetCookie(headers: Headers, key: string): string | n
 export type CredentialKind = 'bearer_jwt' | 'bearer_opaque' | 'cookie' | 'none';
 
 /**
- * Classifies how a request presented its credentials, for log correlation only. Never used for authorization.
+ * Classifies credential shape for routing and log correlation. Does not validate or authorize a credential.
  */
 export function getCredentialKind(headers: Headers): CredentialKind {
   const authorization = headers.get('Authorization');
