@@ -256,11 +256,16 @@ export function createAuthModule<
   return { router, requireSessionMiddleware, getSession, hookContext, schemas, config };
 }
 
-function jsonResponse<S extends StatusCode>(c: Context, payload: AuthResponsePayload<S>): Response {
+function jsonResponse<S extends StatusCode, TBody extends JsonValue>(
+  c: Context,
+  payload: AuthResponsePayload<S, TBody>,
+) {
   const headers = new Headers(payload.headers);
-  if (!headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
+  const responseHeaders: Record<string, string | string[]> = Object.fromEntries(headers);
+  const cookies = headers.getSetCookie();
+  if (cookies.length > 0) {
+    responseHeaders['set-cookie'] = cookies;
   }
 
-  return c.newResponse(JSON.stringify(payload.body), { status: payload.status, headers });
+  return c.json(payload.body, payload.status, responseHeaders);
 }

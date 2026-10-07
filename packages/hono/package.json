@@ -30,19 +30,19 @@
     "@kamaalio/kamaal-auth-core": "workspace:*"
   },
   "devDependencies": {
-    "@kamaalio/hono-standard-openapi": "^0.0.12",
+    "@kamaalio/hono-standard-openapi": "^0.0.22",
     "@standard-schema/spec": "^1.1.0",
-    "@types/node": "^26.1.1",
-    "better-auth": "^1.7.2",
-    "hono": "^4.12.31",
-    "jose": "^6.2.4",
+    "@types/node": "^26.6.4",
+    "better-auth": "^1.7.7",
+    "hono": "^4.13.13",
+    "jose": "^6.2.12",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10",
-    "zod": "^4.4.3"
+    "vitest": "^5.0.3",
+    "zod": "^4.6.5"
   },
   "peerDependencies": {
-    "@kamaalio/hono-standard-openapi": ">=0.0.12",
-    "hono": "^4.12.31"
+    "@kamaalio/hono-standard-openapi": ">=0.0.22",
+    "hono": "^4.13.13"
   },
   "engines": {
     "node": ">=24"

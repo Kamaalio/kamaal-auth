@@ -1,4 +1,4 @@
-// swift-tools-version: 6.3.3
+// swift-tools-version: 6.4
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -17,9 +17,9 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/Kamaalio/KamaalSwift", .upToNextMajor(from: "3.5.0")),
-        .package(url: "https://github.com/apple/swift-http-types", .upToNextMajor(from: "1.6.0")),
-        .package(url: "https://github.com/apple/swift-openapi-runtime", .upToNextMajor(from: "1.12.0")),
-        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", .upToNextMajor(from: "1.19.3")),
+        .package(url: "https://github.com/apple/swift-http-types", .upToNextMajor(from: "1.8.0")),
+        .package(url: "https://github.com/apple/swift-openapi-runtime", .upToNextMajor(from: "1.13.0")),
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", .upToNextMajor(from: "1.19.6")),
     ],
     targets: [
         .target(
