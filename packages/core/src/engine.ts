@@ -3,11 +3,10 @@ import { createRemoteJWKSet, decodeJwt } from 'jose';
 
 import type { AuthConfig } from './config.js';
 import { AUTH_HEADER_NAMES, AUTH_OPENAPI_TAG, AUTH_ROUTE_PATHS, STATUS_CODES, type StatusCode } from './constants.js';
-import { AUTH_ERROR_STATUSES, AuthError, SessionNotFound, defaultAuthErrorRenderer } from './errors/index.js';
+import { AuthError, SessionNotFound, defaultAuthErrorRenderer, hookError } from './errors/index.js';
 import { buildCredentialHeaders } from './headers/credentials.js';
 import type {
   AuthHookContext,
-  AuthHookFailure,
   AuthHooks,
   AuthUser,
   EmailPasswordSignInInput,
@@ -157,10 +156,6 @@ export function createAuthEngine<
 ): AuthEngine<EmailPasswordSignUpInput, EmailPasswordSignInInput, TLocals> {
   const { hooks, config } = options;
   const render = config.errorResponse ?? defaultAuthErrorRenderer;
-  const errorStatuses = new Map<string, StatusCode>([
-    ...Object.entries(AUTH_ERROR_STATUSES),
-    ...Object.entries(config.errorStatuses ?? {}),
-  ]);
   const schemas = buildAuthSchemas();
   const remoteJwks = createRemoteJWKSet(config.jwt.jwksUrl);
   const resolverOptions: SessionResolverOptions = { hooks, config, render, remoteJwks };
@@ -168,15 +163,6 @@ export function createAuthEngine<
     signUp: options.payloadSchemas?.signUp ?? EmailPasswordSignUpSchema,
     signIn: options.payloadSchemas?.signIn ?? EmailPasswordSignInSchema,
   };
-
-  function failure(error: AuthHookFailure, requestId: string | undefined): AuthError {
-    const status: StatusCode = errorStatuses.get(error.code) ?? STATUS_CODES.INTERNAL_SERVER_ERROR;
-
-    return new AuthError(
-      { status, code: error.code, message: error.message, headers: error.headers, requestId },
-      render,
-    );
-  }
 
   async function withExtras(
     c: AuthHookContext<TLocals>,
@@ -213,7 +199,7 @@ export function createAuthEngine<
     args: { status: S; event: AuthEvent; message: string; routePath: string },
   ): Promise<AuthOutcome<AuthResponsePayload<S>>> {
     if (!result.ok) {
-      return { ok: false, error: failure(result.error, c.requestId) };
+      return { ok: false, error: hookError(result.error, config, c.requestId) };
     }
 
     const { user, credentials } = result.value;
@@ -271,7 +257,7 @@ export function createAuthEngine<
     async signOut(c) {
       const result = await hooks.signOut(c);
       if (!result.ok) {
-        return { ok: false, error: failure(result.error, c.requestId) };
+        return { ok: false, error: hookError(result.error, config, c.requestId) };
       }
 
       c.logger.info(
@@ -294,18 +280,21 @@ export function createAuthEngine<
     async issueToken(c) {
       const result = await hooks.issueToken(c);
       if (!result.ok) {
-        c.logger.warn(
-          {
-            event: AUTH_EVENTS.tokenRejected,
-            outcome: 'failure',
-            error_code: result.error.code,
-            credential_kind: getCredentialKind(c.headers),
-            status_code: STATUS_CODES.UNAUTHORIZED,
-          },
-          'Authentication token request was rejected.',
-        );
+        const error = hookError(result.error, config, c.requestId);
+        const fields = {
+          event: error.status >= 500 ? AUTH_EVENTS.tokenFailed : AUTH_EVENTS.tokenRejected,
+          outcome: 'failure' as const,
+          error_code: error.code,
+          credential_kind: getCredentialKind(c.headers),
+          status_code: error.status,
+        };
+        if (error.status >= 500) {
+          c.logger.error(fields, 'Authentication token issuance failed.');
+        } else {
+          c.logger.warn(fields, 'Authentication token request was rejected.');
+        }
 
-        return { ok: false, error: new SessionNotFound({ requestId: c.requestId, render }) };
+        return { ok: false, error };
       }
 
       const issued = result.value;

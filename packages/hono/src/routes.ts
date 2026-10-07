@@ -58,6 +58,10 @@ export function buildAuthRoutes<
       body: { content: { [MIME_TYPES.JSON]: { schema: options.signUpSchema } } },
     },
     responses: {
+      [STATUS_CODES.INTERNAL_SERVER_ERROR]: {
+        description: 'Authentication provider or token issuance failed',
+        content: { [MIME_TYPES.JSON]: { schema: errorSchema } },
+      },
       [STATUS_CODES.CREATED]: {
         description: 'Account created successfully',
         content: { [MIME_TYPES.JSON]: { schema: options.authResponseSchema } },
@@ -88,6 +92,10 @@ export function buildAuthRoutes<
       body: { content: { [MIME_TYPES.JSON]: { schema: options.signInSchema } } },
     },
     responses: {
+      [STATUS_CODES.INTERNAL_SERVER_ERROR]: {
+        description: 'Authentication provider or token issuance failed',
+        content: { [MIME_TYPES.JSON]: { schema: errorSchema } },
+      },
       [STATUS_CODES.OK]: {
         description: 'Sign in successful',
         content: { [MIME_TYPES.JSON]: { schema: options.authResponseSchema } },
@@ -111,6 +119,10 @@ export function buildAuthRoutes<
     summary: 'Sign out',
     description: 'Sign out the current user and invalidate the session',
     responses: {
+      [STATUS_CODES.INTERNAL_SERVER_ERROR]: {
+        description: 'Authentication provider or token issuance failed',
+        content: { [MIME_TYPES.JSON]: { schema: errorSchema } },
+      },
       [STATUS_CODES.OK]: {
         description: 'Sign out successful',
         content: { [MIME_TYPES.JSON]: { schema: SignOutResponseSchema } },
@@ -132,6 +144,10 @@ export function buildAuthRoutes<
       'Get the current user session information. Can authenticate via either Authorization header (JWT bearer token) or session cookie.',
     request: { headers: AuthenticationHeaders.partial() },
     responses: {
+      [STATUS_CODES.INTERNAL_SERVER_ERROR]: {
+        description: 'Authentication provider or token issuance failed',
+        content: { [MIME_TYPES.JSON]: { schema: errorSchema } },
+      },
       [STATUS_CODES.OK]: {
         description: 'Session retrieved successfully',
         content: { [MIME_TYPES.JSON]: { schema: options.sessionResponseSchema } },
@@ -151,6 +167,10 @@ export function buildAuthRoutes<
     description: 'Get a new JWT token for the authenticated session. Use bearer token authentication.',
     security: [{ [options.securitySchemeName]: [] }],
     responses: {
+      [STATUS_CODES.INTERNAL_SERVER_ERROR]: {
+        description: 'Authentication provider or token issuance failed',
+        content: { [MIME_TYPES.JSON]: { schema: errorSchema } },
+      },
       [STATUS_CODES.OK]: {
         description: 'Token retrieved successfully',
         content: { [MIME_TYPES.JSON]: { schema: options.tokenResponseSchema } },

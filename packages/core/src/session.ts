@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { AuthConfig } from './config.js';
 import { AUTH_EVENTS } from './logging/index.js';
 import { STATUS_CODES } from './constants.js';
-import { AuthError, type AuthErrorRenderer, SessionNotFound } from './errors/index.js';
+import { AuthError, type AuthErrorRenderer, SessionNotFound, hookError } from './errors/index.js';
 import type { AuthHookContext, AuthHooks } from './hooks/types.js';
 import type { JsonValue } from './json-value.js';
 import { bearerTokenFrom, describeErrorKind, getCredentialKind, toISO8601String } from './utils/index.js';
@@ -152,17 +152,23 @@ async function resolveSessionFromHook(
 ): Promise<AuthSessionResponse> {
   const result = await options.hooks.getSession(c);
   if (!result.ok || result.value == null) {
-    c.logger.warn(
-      {
-        event: AUTH_EVENTS.sessionLookup,
-        outcome: 'failure',
-        error_code: result.ok ? 'SESSION_NOT_FOUND' : result.error.code,
-        credential_kind: getCredentialKind(c.headers),
-      },
-      'Authenticated user session was not found.',
-    );
+    const error = result.ok
+      ? new SessionNotFound({ requestId: c.requestId, render: options.render })
+      : hookError(result.error, options.config, c.requestId);
+    const fields = {
+      event: AUTH_EVENTS.sessionLookup,
+      outcome: 'failure' as const,
+      error_code: error.code,
+      credential_kind: getCredentialKind(c.headers),
+      status_code: error.status,
+    };
+    if (error.status >= 500) {
+      c.logger.error(fields, 'Authenticated user session lookup failed.');
+    } else {
+      c.logger.warn(fields, 'Authenticated user session was not found.');
+    }
 
-    throw new SessionNotFound({ requestId: c.requestId, render: options.render });
+    throw error;
   }
 
   const { user, session } = result.value;

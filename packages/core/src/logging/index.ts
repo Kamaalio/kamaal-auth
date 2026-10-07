@@ -7,6 +7,7 @@ export const AUTH_EVENTS = {
   sessionLookup: 'auth.session.lookup',
   jwtVerification: 'auth.jwt.verification',
   tokenIssued: 'auth.token.issued',
+  tokenFailed: 'auth.token.failed',
   tokenRejected: 'auth.token.rejected',
 } as const;
 
