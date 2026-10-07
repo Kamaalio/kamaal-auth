@@ -72,7 +72,7 @@ async function resolveSessionFromJwt(
   options: SessionResolverOptions,
 ): Promise<AuthSessionResponse | null> {
   const token = bearerTokenFrom(c.headers);
-  if (token == null) {
+  if (token == null || getCredentialKind(c.headers) !== 'bearer_jwt') {
     return null;
   }
 

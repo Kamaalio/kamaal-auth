@@ -1,4 +1,4 @@
-import type { AuthConfig } from '@kamaalio/kamaal-auth-core';
+import { noopAuthLogger, type AuthConfig, type AuthLogger } from '@kamaalio/kamaal-auth-core';
 import { StandardOpenAPIHono } from '@kamaalio/hono-standard-openapi';
 
 import { createAuthModule } from '../../factory.js';
@@ -23,7 +23,7 @@ export interface IntegrationHarness {
 }
 
 /** Mounts kamaal-auth against a real better-auth instance backed by an in-memory SQLite database. */
-export async function createIntegrationHarness(): Promise<IntegrationHarness> {
+export async function createIntegrationHarness(logger: AuthLogger = noopAuthLogger): Promise<IntegrationHarness> {
   const instance = await createBetterAuthTestInstance();
 
   const config: AuthConfig = {
@@ -44,6 +44,7 @@ export async function createIntegrationHarness(): Promise<IntegrationHarness> {
     config,
     locals: (): AuthLocals => ({ auth: instance.auth, db: instance.db }),
     requestId: () => 'test-request-id',
+    logger: () => logger,
   });
 
   const app = new StandardOpenAPIHono<AuthHonoEnv>();

@@ -1,7 +1,7 @@
 import type { StandardJSONSchemaV1, StandardSchemaV1 } from '@standard-schema/spec';
 import { StandardOpenAPIHono } from '@kamaalio/hono-standard-openapi';
 import { z } from 'zod';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AUTH_HEADER_NAMES, parseCredentialHeaders, type JsonValue } from '@kamaalio/kamaal-auth-core';
 import { SESSION_COOKIE_NAME, createInMemoryAuth, type InMemoryAuth } from '@kamaalio/kamaal-auth-core/testing';
@@ -179,6 +179,17 @@ describe('session', () => {
     });
 
     expect(response.status).toBe(200);
+  });
+
+  it('does not load verification keys when resolving an opaque session bearer', async () => {
+    const verificationKeys = vi.spyOn(harness.auth.hooks, 'verificationKeys');
+
+    const response = await harness.request('/session', {
+      headers: { Authorization: `Bearer ${credentials?.sessionToken}` },
+    });
+
+    expect(response.status).toBe(200);
+    expect(verificationKeys).not.toHaveBeenCalled();
   });
 
   it('rejects an unauthenticated request with 401', async () => {

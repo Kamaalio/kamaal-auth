@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SESSION_COOKIE_NAME } from './better-auth-harness.js';
 import { createIntegrationHarness, type IntegrationHarness } from './harness.js';
@@ -22,9 +22,11 @@ async function signUp(harness: IntegrationHarness) {
 
 describe('session (real better-auth + SQLite)', () => {
   let harness: IntegrationHarness;
+  const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
   beforeEach(async () => {
-    harness = await createIntegrationHarness();
+    vi.clearAllMocks();
+    harness = await createIntegrationHarness(logger);
   });
 
   afterEach(() => {
@@ -39,6 +41,69 @@ describe('session (real better-auth + SQLite)', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.user.email).toBe(payload.email);
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'auth.jwt.verification', outcome: 'success' }),
+      expect.any(String),
+    );
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('accepts the signed session bearer without warning that it is an invalid JWT', async () => {
+    const { payload, sessionToken } = await signUp(harness);
+
+    const response = await harness.request('/session', { headers: { Authorization: `Bearer ${sessionToken}` } });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).user.email).toBe(payload.email);
+    expect(logger.warn).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'auth.session.lookup', outcome: 'success' }),
+      expect.any(String),
+    );
+    expect(JSON.stringify(logger.info.mock.calls)).not.toContain(sessionToken);
+  });
+
+  it('accepts the unsigned session bearer without warning that it is an invalid JWT', async () => {
+    const { sessionToken } = await signUp(harness);
+    const token = rawSessionId(sessionToken);
+
+    const response = await harness.request('/session', { headers: { Authorization: `Bearer ${token}` } });
+
+    expect(response.status).toBe(200);
+    expect(logger.warn).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'auth.session.lookup', outcome: 'success' }),
+      expect.any(String),
+    );
+  });
+
+  it('reports an unknown opaque bearer as a session failure without a JWT failure', async () => {
+    const token = 'unknown-session.signature';
+
+    const response = await harness.request('/session', { headers: { Authorization: `Bearer ${token}` } });
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ code: 'SESSION_NOT_FOUND' });
+    expect(logger.warn).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        event: 'auth.session.lookup',
+        outcome: 'failure',
+        credential_kind: 'bearer_opaque',
+        error_code: 'SESSION_NOT_FOUND',
+      }),
+      expect.any(String),
+    );
+    expect(JSON.stringify(logger.warn.mock.calls)).not.toContain(token);
+  });
+
+  it('still warns about verification failure for a malformed three-part JWT', async () => {
+    const response = await harness.request('/session', { headers: { Authorization: 'Bearer invalid.jwt.token' } });
+
+    expect(response.status).toBe(401);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'auth.jwt.verification', outcome: 'failure', credential_kind: 'bearer_jwt' }),
+      expect.any(String),
+    );
   });
 
   it('resolves a session from the session cookie, falling back to the getSession hook', async () => {
