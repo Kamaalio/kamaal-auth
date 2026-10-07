@@ -1,3 +1,6 @@
+import type { AuthConfig } from '../config.js';
+import type { AuthHookFailure } from '../hooks/types.js';
+
 import { DEFAULT_REQUEST_ID_HEADER_NAME, STATUS_CODES, type StatusCode } from '../constants.js';
 
 /**
@@ -7,6 +10,7 @@ import { DEFAULT_REQUEST_ID_HEADER_NAME, STATUS_CODES, type StatusCode } from '.
  * override this through `AuthConfig.errorStatuses`.
  */
 export const AUTH_ERROR_STATUSES = {
+  SESSION_NOT_FOUND: STATUS_CODES.UNAUTHORIZED,
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: STATUS_CODES.CONFLICT,
   INVALID_EMAIL_OR_PASSWORD: STATUS_CODES.UNAUTHORIZED,
   MISSING_OR_NULL_ORIGIN: STATUS_CODES.UNAUTHORIZED,
@@ -75,4 +79,18 @@ export class SessionNotFound extends AuthError {
     );
     this.name = 'SessionNotFound';
   }
+}
+
+/** Shared by authentication, session lookup, and refresh; unknown provider failures are server errors. */
+export function hookError(error: AuthHookFailure, config: AuthConfig, requestId: string | undefined): AuthError {
+  const statuses = new Map<string, StatusCode>([
+    ...Object.entries(AUTH_ERROR_STATUSES),
+    ...Object.entries(config.errorStatuses ?? {}),
+  ]);
+  const status = statuses.get(error.code) ?? STATUS_CODES.INTERNAL_SERVER_ERROR;
+
+  return new AuthError(
+    { status, code: error.code, message: error.message, headers: error.headers, requestId },
+    config.errorResponse,
+  );
 }

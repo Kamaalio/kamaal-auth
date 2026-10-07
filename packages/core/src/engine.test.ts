@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AUTH_HEADER_NAMES, STATUS_CODES } from './constants.js';
 import { createAuthEngine, type AuthEngine, type AuthOutcome } from './engine.js';
-import { AuthError } from './errors/index.js';
+import { AuthError, type AuthErrorInfo } from './errors/index.js';
 import { parseCredentialHeaders } from './headers/credentials.js';
 import type { AuthCredentials, AuthHookContext } from './hooks/types.js';
-import { noopAuthLogger } from './logging/index.js';
+import { AUTH_EVENTS, noopAuthLogger } from './logging/index.js';
 import { createInMemoryAuth, type InMemoryAuth } from './testing/index.js';
 
 /**
@@ -39,7 +39,7 @@ describe('createAuthEngine', () => {
     return outcome.value;
   }
 
-  function expectError<T>(outcome: AuthOutcome<T>): AuthError {
+  function expectError(outcome: AuthOutcome<unknown>): AuthError {
     if (outcome.ok) {
       throw new Error('Expected a failed outcome');
     }
@@ -101,6 +101,68 @@ describe('createAuthEngine', () => {
     expect(payload.headers?.get(AUTH_HEADER_NAMES.sessionToken)).toBe(sessionToken);
     expect(payload.body).toMatchObject({ token: expect.any(String) });
   });
+
+  it.each([
+    ['issueToken', AUTH_EVENTS.tokenFailed],
+    ['resolveSession', AUTH_EVENTS.sessionLookup],
+  ] as const)(
+    'logs %s provider failures at error severity without credentials or upstream messages',
+    async (operation, event) => {
+      const upstreamMessage = 'Sensitive upstream detail';
+      const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+      const providerFailure = { ok: false, error: { code: 'PROVIDER_UNAVAILABLE', message: upstreamMessage } } as const;
+      vi.spyOn(auth.hooks, 'issueToken').mockResolvedValue(providerFailure);
+      vi.spyOn(auth.hooks, 'getSession').mockResolvedValue(providerFailure);
+
+      const error = expectError(
+        await engine[operation]({ ...contextOf({ Authorization: 'Bearer private-session-token' }), logger }),
+      );
+
+      expect(error.status).toBe(500);
+      expect(logger.error).toHaveBeenCalledWith(
+        {
+          event,
+          outcome: 'failure',
+          error_code: 'PROVIDER_UNAVAILABLE',
+          credential_kind: 'bearer_opaque',
+          status_code: 500,
+        },
+        expect.any(String),
+      );
+      expect(logger.warn).not.toHaveBeenCalled();
+      expect(JSON.stringify(logger.error.mock.calls)).not.toContain('private-session-token');
+      expect(JSON.stringify(logger.error.mock.calls)).not.toContain(upstreamMessage);
+    },
+  );
+
+  it.each(['issueToken', 'resolveSession'] as const)(
+    'uses the configured renderer and status override for %s failures',
+    async operation => {
+      const providerFailure = {
+        ok: false,
+        error: { code: 'ACCESS_DENIED', message: 'Forbidden', headers: new Headers({ 'X-Provider': 'test' }) },
+      } as const;
+      vi.spyOn(auth.hooks, 'issueToken').mockResolvedValue(providerFailure);
+      vi.spyOn(auth.hooks, 'getSession').mockResolvedValue(providerFailure);
+      const render = vi.fn((info: AuthErrorInfo) => new Response('custom envelope', { status: info.status }));
+      const customEngine = createAuthEngine({
+        hooks: auth.hooks,
+        config: { ...auth.config, errorStatuses: { ACCESS_DENIED: 403 }, errorResponse: render },
+      });
+
+      const error = expectError(await customEngine[operation](contextOf()));
+
+      expect(error.status).toBe(403);
+      await expect(error.getResponse().text()).resolves.toBe('custom envelope');
+      expect(render).toHaveBeenCalledWith({
+        status: 403,
+        code: 'ACCESS_DENIED',
+        message: 'Forbidden',
+        requestId: 'request-1',
+        headers: expect.any(Headers),
+      });
+    },
+  );
 
   it('ends the session on sign out, and stops issuing tokens for it', async () => {
     const { sessionToken } = await signUp();

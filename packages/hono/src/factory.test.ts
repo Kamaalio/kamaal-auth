@@ -525,3 +525,59 @@ describe('extra routes', () => {
     expect((await response.json()).id).toBeTypeOf('string');
   });
 });
+
+describe('provider failures', () => {
+  it.each(['/token', '/session'])('preserves server failures from %s without invalidating the session', async path => {
+    const harness = await createHarness();
+    const credentials = parseCredentialHeaders((await signUp(harness)).headers);
+    const providerFailure = {
+      ok: false,
+      error: {
+        code: 'SIGNING_UNAVAILABLE',
+        message: 'Authentication temporarily unavailable',
+        headers: new Headers({ 'Retry-After': '30' }),
+      },
+    } as const;
+    vi.spyOn(harness.auth.hooks, 'issueToken').mockResolvedValueOnce(providerFailure);
+    vi.spyOn(harness.auth.hooks, 'getSession').mockResolvedValueOnce(providerFailure);
+
+    const response = await harness.request(path, { headers: { Authorization: `Bearer ${credentials?.sessionToken}` } });
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      code: 'SIGNING_UNAVAILABLE',
+      message: 'Authentication temporarily unavailable',
+    });
+    expect(response.headers.get('Retry-After')).toBe('30');
+    expect(response.headers.get('Request-Id')).toBe('test-request-id');
+    expect(harness.auth.store.sessions.has(credentials?.sessionToken ?? '')).toBe(true);
+  });
+
+  it.each(['/token', '/session'])('honors a configured authorization failure from %s', async path => {
+    const harness = await createHarness(auth => ({
+      hooks: auth.hooks,
+      config: { ...auth.config, errorStatuses: { SESSION_REVOKED: 401 } },
+    }));
+    const providerFailure = { ok: false, error: { code: 'SESSION_REVOKED', message: 'Unauthorized' } } as const;
+    vi.spyOn(harness.auth.hooks, 'issueToken').mockResolvedValueOnce(providerFailure);
+    vi.spyOn(harness.auth.hooks, 'getSession').mockResolvedValueOnce(providerFailure);
+
+    const response = await harness.request(path);
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ code: 'SESSION_REVOKED', message: 'Unauthorized' });
+  });
+
+  it('documents server failures on all authentication operations', async () => {
+    const harness = await createHarness();
+    harness.app.doc('/spec.json', { openapi: '3.1.0', info: { title: 'Test', version: '1' } });
+
+    const spec = await (await harness.app.request(`${ORIGIN}/spec.json`)).json();
+
+    expect(spec.paths[`${BASE_PATH}/sign-in/email`].post.responses['500'].content['application/json']).toBeDefined();
+    expect(spec.paths[`${BASE_PATH}/sign-up/email`].post.responses['500'].content['application/json']).toBeDefined();
+    expect(spec.paths[`${BASE_PATH}/sign-out`].post.responses['500'].content['application/json']).toBeDefined();
+    expect(spec.paths[`${BASE_PATH}/session`].get.responses['500'].content['application/json']).toBeDefined();
+    expect(spec.paths[`${BASE_PATH}/token`].get.responses['500'].content['application/json']).toBeDefined();
+  });
+});

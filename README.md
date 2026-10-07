@@ -90,6 +90,30 @@ sessionExtras: {
 extraRoutes: (router, deps) => router.openapi(preferencesRoute(deps.schemas.SessionResponseSchema), handler),
 ```
 
+### Provider failures and credential safety
+
+All hook failures, including `getSession` and `issueToken`, use `config.errorStatuses`.
+`SESSION_NOT_FOUND` defaults to 401; unknown codes default to 500. Return a successful
+`getSession` result containing `null` only when the session is actually missing. A database
+outage or signing-key failure should return a failure with its own code instead:
+
+```ts
+return { ok: false, error: { code: 'TOKEN_ISSUANCE_FAILED', message: 'Authentication temporarily unavailable' } };
+```
+
+Map any provider-specific session rejection codes to 401 through `errorStatuses`. The Hono
+OpenAPI routes document 500 responses so generated clients can handle them. Native request
+hooks must preserve the HTTP status when constructing `AuthRequestFailure`; the Swift client
+keeps stored credentials on server failures and clears them on authentication rejection.
+Consumers upgrading from versions that converted every lookup or refresh failure to 401
+should check their provider's rejection codes and add these mappings explicitly.
+
+Hook error messages are returned to clients, so keep them safe and generic. The package's
+failure logs include only event, error code, credential kind, and status, never upstream
+messages or credential values. Consumer HTTP logging should omit authentication request and
+response bodies, authorization headers, cookies, and auth query parameters: those can contain
+passwords, email addresses, or tokens. Signing-key storage and recovery remain app-owned.
+
 ## Releasing
 
 All artifacts use one version line. GitHub Actions publishes the npm packages after a bare semver tag (`<version>`) is
