@@ -8,6 +8,7 @@ import { SESSION_COOKIE_NAME, createInMemoryAuth, type InMemoryAuth } from '@kam
 
 import type { AuthHonoEnv } from './env.js';
 import { createAuthModule } from './factory.js';
+import type { SessionExtras } from './index.js';
 
 const BASE_PATH = '/app-api/auth';
 const ORIGIN = 'http://localhost';
@@ -319,18 +320,19 @@ describe('session extras', () => {
   async function createExtrasHarness(): Promise<Harness & { resolveCalls: string[] }> {
     const resolveCalls: string[] = [];
     const auth = await createInMemoryAuth();
+    const sessionExtras: SessionExtras<typeof PreferencesSchema> = {
+      schema: PreferencesSchema,
+      resolve: async (_c, { userId }) => {
+        resolveCalls.push(userId);
+
+        return { preferred_currency: 'EUR', has_preferred_currency_preference: true };
+      },
+    };
     const module = createAuthModule({
       hooks: auth.hooks,
       config: auth.config,
       requestId: () => 'test-request-id',
-      sessionExtras: {
-        schema: PreferencesSchema,
-        resolve: async (_c, { userId }) => {
-          resolveCalls.push(userId);
-
-          return { preferred_currency: 'EUR', has_preferred_currency_preference: true };
-        },
-      },
+      sessionExtras,
     });
 
     const app = new StandardOpenAPIHono<AuthHonoEnv>();
