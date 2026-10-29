@@ -1,4 +1,5 @@
 export * from '@kamaalio/kamaal-auth-core';
+export type { SessionExtras } from '@kamaalio/kamaal-auth-core';
 
 export { AUTH_SESSION_CONTEXT_KEY, type AuthHonoEnv, type AuthVariables } from './env.js';
 
