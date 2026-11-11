@@ -1,3 +1,4 @@
+import Foundation
 import KamaalAuthClient
 import Testing
 
@@ -36,6 +37,109 @@ struct KamaalAuthTests {
             cachedSessionStore: cache)
         await yield(until: { !auth.initiallyValidatingToken })
         #expect(auth.session == cached)
+    }
+
+    @Test
+    func `Retries startup restoration without asking the user to sign in`() async {
+        let client = SessionRestoreClient()
+        let auth = makeRestoringAuth(client: client)
+        var states = auth.sessionStates().makeAsyncIterator()
+
+        #expect(await states.next() == .validatingCredentials)
+        await yield(until: { auth.canRetrySessionRestore })
+        #expect(auth.canRetrySessionRestore)
+        #expect(!auth.initiallyValidatingToken)
+        #expect(!auth.isLoggedIn)
+        #expect(client.sessionRequests == 4)
+
+        let retry = Task { await auth.retrySessionRestore() }
+        await yield(until: { client.hasPendingRetry })
+        #expect(auth.initiallyValidatingToken)
+        await auth.retrySessionRestore()
+        client.finishRetry(with: .success(PreviewKamaalAuthClient.sampleSession))
+        await retry.value
+
+        let session = UserSession(name: "John Doe", email: "john.doe@example.com", expiresAt: .distantFuture)
+        #expect(await states.next() == .authenticated(session))
+        #expect(auth.session == session)
+        #expect(!auth.canRetrySessionRestore)
+        #expect(!auth.initiallyValidatingToken)
+        #expect(client.sessionRequests == 5)
+        #expect(client.signInRequests == 0)
+    }
+
+    @Test
+    func `Automatically restores the session after a temporary startup failure`() async {
+        let client = SessionRestoreClient(initialFailures: 1)
+        var retryDelays: [Duration] = []
+        let auth = makeRestoringAuth(client: client) { retryDelays.append($0) }
+
+        await yield(until: { client.hasPendingRetry })
+        #expect(auth.initiallyValidatingToken)
+        #expect(!auth.canRetrySessionRestore)
+        #expect(retryDelays.count == 1)
+        #expect(retryDelays.allSatisfy { (.milliseconds(500)...(.milliseconds(625))).contains($0) })
+
+        client.finishRetry(with: .success(PreviewKamaalAuthClient.sampleSession))
+        await yield(until: { !auth.initiallyValidatingToken })
+
+        #expect(auth.isLoggedIn)
+        #expect(!auth.canRetrySessionRestore)
+        #expect(client.sessionRequests == 2)
+    }
+
+    @Test
+    func `Stops automatic retries when the server rejects the session`() async {
+        let client = SessionRestoreClient(initialFailures: 1)
+        let auth = makeRestoringAuth(client: client)
+        var states = auth.sessionStates().makeAsyncIterator()
+        #expect(await states.next() == .validatingCredentials)
+
+        await yield(until: { client.hasPendingRetry })
+        client.finishRetry(with: .failure(.unauthorized))
+
+        #expect(await states.next() == .unauthenticated)
+        #expect(!auth.canRetrySessionRestore)
+        #expect(client.sessionRequests == 2)
+    }
+
+    @Test
+    func `Shows sign-in when the retry confirms the session is gone`() async {
+        let client = SessionRestoreClient()
+        let auth = makeRestoringAuth(client: client)
+        var states = auth.sessionStates().makeAsyncIterator()
+        #expect(await states.next() == .validatingCredentials)
+        await yield(until: { auth.canRetrySessionRestore })
+
+        let retry = Task { await auth.retrySessionRestore() }
+        await yield(until: { client.hasPendingRetry })
+        client.finishRetry(with: .failure(.unauthorized))
+        await retry.value
+
+        #expect(await states.next() == .unauthenticated)
+        #expect(!auth.canRetrySessionRestore)
+        #expect(!auth.initiallyValidatingToken)
+        #expect(!auth.isLoggedIn)
+    }
+
+    @Test
+    func `Ignores a pending startup retry after sign-out`() async {
+        let client = SessionRestoreClient()
+        let auth = makeRestoringAuth(client: client)
+        var states = auth.sessionStates().makeAsyncIterator()
+        #expect(await states.next() == .validatingCredentials)
+        await yield(until: { auth.canRetrySessionRestore })
+
+        let retry = Task { await auth.retrySessionRestore() }
+        await yield(until: { client.hasPendingRetry })
+        await auth.signOut()
+        client.finishRetry(with: .success(PreviewKamaalAuthClient.sampleSession))
+        await retry.value
+
+        #expect(await states.next() == .unauthenticated)
+        #expect(!auth.isLoggedIn)
+        #expect(!auth.canRetrySessionRestore)
+        #expect(!auth.initiallyValidatingToken)
     }
 
     @Test(arguments: [
@@ -153,7 +257,63 @@ struct KamaalAuthTests {
         #expect(await states.next() == .unauthenticated)
     }
 
+    private func makeRestoringAuth(
+        client: SessionRestoreClient, waitBeforeSessionRetry: @escaping @MainActor (Duration) async -> Void = { _ in }
+    ) -> KamaalAuth {
+        let oldSession = UserSession(name: "Cached", email: "cached@example.com", expiresAt: .distantFuture)
+        let cache = CachedUserSessionStoreSpy(
+            cachedSession: CachedUserSession(session: oldSession, cachedAt: .distantPast))
+        return KamaalAuth(
+            client: client, configuration: configuration, cachedSessionStore: cache,
+            waitBeforeSessionRetry: waitBeforeSessionRetry)
+    }
+
     private var configuration: KamaalAuthConfiguration { .init(appName: "Test") }
+}
+
+@MainActor
+private final class SessionRestoreClient: KamaalAuthClient {
+    nonisolated let hasValidCredentials = true
+    private let initialFailures: Int
+    private(set) var sessionRequests = 0
+    private(set) var signInRequests = 0
+    private var retry: CheckedContinuation<Result<AuthSession, SessionErrors>, Never>?
+    var hasPendingRetry: Bool { retry != nil }
+
+    init(initialFailures: Int = 4) { self.initialFailures = initialFailures }
+
+    @MainActor
+    func session() async -> Result<AuthSession, SessionErrors> {
+        sessionRequests += 1
+        if sessionRequests <= initialFailures {
+            return .failure(.unknown(status: 503, payload: nil, cause: nil))
+        }
+        guard sessionRequests == initialFailures + 1 else {
+            Issue.record("A second retry began while one was already running.")
+            return .failure(.unauthorized)
+        }
+        return await withCheckedContinuation { retry = $0 }
+    }
+
+    func finishRetry(with result: Result<AuthSession, SessionErrors>) {
+        let pendingRetry = retry
+        retry = nil
+        pendingRetry?.resume(returning: result)
+    }
+
+    func validAuthToken() async -> String? { nil }
+
+    func refreshToken() async -> Result<Void, SessionErrors> { .success(()) }
+
+    @MainActor
+    func signIn(with payload: SignInPayload) async -> Result<Void, SignInErrors> {
+        signInRequests += 1
+        return .success(())
+    }
+
+    func signUp(with payload: SignUpPayload) async -> Result<Void, SignUpErrors> { .success(()) }
+
+    func signOut() async -> Result<Void, SignOutErrors> { .success(()) }
 }
 
 @MainActor
@@ -163,7 +323,7 @@ final class CachedUserSessionStoreSpy: CachedUserSessionStore {
 }
 
 @MainActor
-private func yield(until condition: @MainActor () -> Bool, iterations: Int = 1_000) async {
+func yield(until condition: @MainActor () -> Bool, iterations: Int = 1_000) async {
     var count = 0
     while !condition(), count < iterations {
         await Task.yield()

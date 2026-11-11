@@ -39,13 +39,10 @@ private func storeCredentials(
 
 private func makeProvider(
     store: InMemoryCredentialsStore,
-    issued: AuthCredentialHeaders? = MockAuthRequestHooks.credentials(authToken: "refreshed.jwt.token")
+    outcome: AuthRequestOutcome<AuthCredentialHeaders> = .success(
+        MockAuthRequestHooks.credentials(authToken: "refreshed.jwt.token"))
 ) -> AuthTokenProvider {
-    AuthTokenProvider(credentialsKey: credentialsKey, credentialsStore: store) {
-        guard let issued else { return .failure(AuthRequestFailure(status: 401)) }
-
-        return .success(issued)
-    }
+    AuthTokenProvider(credentialsKey: credentialsKey, credentialsStore: store) { outcome }
 }
 
 /// Runs one request through a middleware and reports the request that came out the other side.
@@ -105,15 +102,47 @@ struct AuthorizationMiddlewareTests {
         #expect(try store.credentials(forKey: credentialsKey) == nil)
     }
 
-    @Test("Passes through when a needed refresh fails")
-    func passesThroughWhenRefreshFails() async throws {
+    @Test("Passes through when refresh is rejected")
+    func passesThroughWhenRefreshIsRejected() async throws {
         let store = InMemoryCredentialsStore()
         try storeCredentials(in: store, authTokenExpiryDate: Date.now.addingTimeInterval(60))
 
-        let middleware = AuthorizationMiddleware(tokenProvider: makeProvider(store: store, issued: nil))
+        let middleware = AuthorizationMiddleware(
+            tokenProvider: makeProvider(store: store, outcome: .failure(.init(status: 401))))
         let forwarded = try await intercept(middleware)
 
         #expect(forwarded.headerFields[.authorization] == nil)
+    }
+
+    @Test("Attaches the existing JWT when a routine refresh returns 503")
+    func attachesExistingTokenWhenRefreshIsUnavailable() async throws {
+        let store = InMemoryCredentialsStore()
+        let credentials = try storeCredentials(in: store, lastSessionUpdate: Date.now.addingTimeInterval(-90_000))
+        let middleware = AuthorizationMiddleware(
+            tokenProvider: makeProvider(store: store, outcome: .failure(.init(status: 503))))
+
+        let forwarded = try await intercept(middleware)
+
+        #expect(forwarded.headerFields[.authorization] == "Bearer stored.auth.token")
+        #expect(try store.credentials(forKey: credentialsKey) == credentials)
+    }
+
+    @Test("Surfaces a temporary refresh failure before forwarding a request with an expired JWT")
+    func throwsWhenRefreshIsUnavailableAndTokenHasExpired() async throws {
+        let store = InMemoryCredentialsStore()
+        let credentials = try storeCredentials(in: store, authTokenExpiryDate: .distantPast)
+        let middleware = AuthorizationMiddleware(
+            tokenProvider: makeProvider(store: store, outcome: .failure(.init(status: 503))))
+        let request = HTTPRequest(method: .get, scheme: nil, authority: nil, path: "/app-api/auth/session")
+
+        await #expect(throws: SessionErrors.unknown(status: 503, payload: nil, cause: nil)) {
+            _ = try await middleware.intercept(request, body: nil, baseURL: baseURL, operationID: "session") {
+                _, _, _ in
+                Issue.record("The session request reached the transport without a usable JWT.")
+                return (HTTPResponse(status: .unauthorized), nil)
+            }
+        }
+        #expect(try store.credentials(forKey: credentialsKey) == credentials)
     }
 
     @Test("Leaves the rest of the request alone")

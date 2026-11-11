@@ -359,6 +359,18 @@ struct ValidAuthTokenTests {
         #expect(await client.validAuthToken() == nil)
     }
 
+    @Test("Reuses an unexpired JWT when a routine refresh is unavailable")
+    func reusesValidTokenWhenRefreshIsUnavailable() async throws {
+        let store = InMemoryCredentialsStore()
+        let credentials = try storeCredentials(in: store, lastSessionUpdate: Date.now.addingTimeInterval(-90_000))
+        let hooks = MockAuthRequestHooks().stub(.issueToken, with: .failure(.init(status: 503)))
+        let (client, _) = makeClient(hooks: hooks, store: store)
+
+        #expect(await client.validAuthToken() == credentials.authToken)
+        #expect(hooks.callCount(.issueToken) == 1)
+        #expect(try store.credentials(forKey: credentialsKey) == credentials)
+    }
+
     @Test("Returns nothing when the refresh fails")
     func returnsNothingWhenRefreshFails() async throws {
         let store = InMemoryCredentialsStore()

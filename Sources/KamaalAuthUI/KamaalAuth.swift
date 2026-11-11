@@ -16,6 +16,7 @@ private let logger = KamaalLogger(from: KamaalAuth.self)
 @Observable
 public final class KamaalAuth {
     private let client: KamaalAuthClient
+    private let waitBeforeSessionRetry: @MainActor (Duration) async -> Void
 
     let configuration: KamaalAuthConfiguration
 
@@ -28,6 +29,8 @@ public final class KamaalAuth {
     public private(set) var session: UserSession?
     /// Whether stored credentials are being validated before displaying an auth state.
     public private(set) var initiallyValidatingToken: Bool
+    private(set) var canRetrySessionRestore = false
+    @ObservationIgnored private var sessionRestoreAttempt: UUID?
 
     /// Creates an auth state using the supplied client and app configuration.
     ///
@@ -44,19 +47,22 @@ public final class KamaalAuth {
     }
 
     init(
-        client: any KamaalAuthClient, configuration: KamaalAuthConfiguration, cachedSessionStore: CachedUserSessionStore
+        client: any KamaalAuthClient,
+        configuration: KamaalAuthConfiguration,
+        cachedSessionStore: CachedUserSessionStore,
+        waitBeforeSessionRetry: @escaping @MainActor (Duration) async -> Void = { try? await Task.sleep(for: $0) }
     ) {
         self.client = client
         self.configuration = configuration
         self.cachedSessionStore = cachedSessionStore
-        initiallyValidatingToken = client.hasValidCredentials
-        currentSessionState = client.hasValidCredentials ? .validatingCredentials : .unauthenticated
-        if initiallyValidatingToken {
-            Task {
-                let result = await loadSession()
-                initiallyValidatingToken = false
-                if case .failure = result { setSessionState(.unauthenticated) }
-            }
+        self.waitBeforeSessionRetry = waitBeforeSessionRetry
+        let hasCredentials = client.hasValidCredentials
+        initiallyValidatingToken = hasCredentials
+        currentSessionState = hasCredentials ? .validatingCredentials : .unauthenticated
+        if hasCredentials {
+            let attempt = UUID()
+            sessionRestoreAttempt = attempt
+            Task { await restoreSession(attempt: attempt, retryDelaysInMilliseconds: [500, 1_000, 2_000]) }
         }
     }
 
@@ -147,22 +153,61 @@ public final class KamaalAuth {
     ///   await auth.signOut()
     ///   ```
     public func signOut() async {
+        sessionRestoreAttempt = nil
+        canRetrySessionRestore = false
         if case .failure(let failure) = await client.signOut() {
             logger.warning("Sign out request failed; clearing the local session anyway; reason=\(failure)")
         }
+        initiallyValidatingToken = false
         session = nil
         cachedSessionStore.cachedSession = nil
         setSessionState(.unauthenticated)
         logger.info("Signed out.")
     }
 
-    @discardableResult
-    private func loadSession(allowCachedSession: Bool = true) async -> Result<Void, KamaalAuthFeatureSessionError> {
-        if allowCachedSession, let cachedSession = getCachedSessionIfLoadedToday() {
+    func retrySessionRestore() async {
+        guard canRetrySessionRestore, !initiallyValidatingToken else { return }
+
+        let attempt = UUID()
+        sessionRestoreAttempt = attempt
+        initiallyValidatingToken = true
+        canRetrySessionRestore = false
+        await restoreSession(attempt: attempt)
+    }
+
+    private func restoreSession(attempt: UUID, retryDelaysInMilliseconds: [Int] = []) async {
+        guard sessionRestoreAttempt == attempt else { return }
+
+        if let cachedSession = getCachedSessionIfLoadedToday() {
             setSession(cachedSession)
-            return .success(())
+            return
         }
-        let result: Result<UserSession, KamaalAuthFeatureSessionError> = await client.session()
+
+        var result = await fetchSession()
+        for delay in retryDelaysInMilliseconds {
+            guard case .failure(.serverUnavailable) = result, sessionRestoreAttempt == attempt else { break }
+
+            let jitter = Int.random(in: 0...(delay / 4))
+            await waitBeforeSessionRetry(.milliseconds(delay + jitter))
+            guard sessionRestoreAttempt == attempt else { return }
+
+            result = await fetchSession()
+        }
+        guard sessionRestoreAttempt == attempt else { return }
+
+        sessionRestoreAttempt = nil
+        initiallyValidatingToken = false
+        switch result {
+        case .success(let session): setSession(session)
+        case .failure(.unauthorized):
+            cachedSessionStore.cachedSession = nil
+            setSessionState(.unauthenticated)
+        case .failure(.serverUnavailable): canRetrySessionRestore = true
+        }
+    }
+
+    private func fetchSession() async -> Result<UserSession, KamaalAuthFeatureSessionError> {
+        await client.session()
             .map { UserSession(name: $0.name, email: $0.email, expiresAt: $0.expiresAt) }
             .mapError {
                 switch $0 {
@@ -174,21 +219,15 @@ public final class KamaalAuth {
                     return .serverUnavailable(context: $0)
                 }
             }
-        switch result {
-        case .failure(let failure):
-            logger.warning("Couldn't load the authenticated session.")
-            return .failure(failure)
-        case .success(let session): setSession(session)
-        }
-        logger.info("Loaded the authenticated session.")
-        return .success(())
     }
 
     private func loadAuthenticatedSession() async -> Result<Void, KamaalAuthOperationError> {
-        switch await loadSession(allowCachedSession: false) {
-        case .failure(.serverUnavailable): .failure(.serverUnavailable)
-        case .failure(.unauthorized): .failure(.sessionUnavailable)
-        case .success: .success(())
+        switch await fetchSession() {
+        case .failure(.serverUnavailable): return .failure(.serverUnavailable)
+        case .failure(.unauthorized): return .failure(.sessionUnavailable)
+        case .success(let session):
+            setSession(session)
+            return .success(())
         }
     }
 
@@ -217,9 +256,13 @@ public final class KamaalAuth {
     }
 
     private func setSession(_ session: UserSession) {
+        sessionRestoreAttempt = nil
+        initiallyValidatingToken = false
+        canRetrySessionRestore = false
         self.session = session
         cachedSessionStore.cachedSession = CachedUserSession(session: session, cachedAt: .now)
         setSessionState(.authenticated(session))
+        logger.info("Loaded the authenticated session.")
     }
 
     private func setSessionState(_ state: KamaalAuthSessionState) {

@@ -20,6 +20,17 @@ private struct KamaalAuthEnvironmentModifier: ViewModifier {
         KJustStack {
             if auth.initiallyValidatingToken {
                 ProgressView()
+            } else if auth.canRetrySessionRestore {
+                VStack(spacing: 12) {
+                    Text(KamaalAuthOperationError.serverUnavailable.message)
+                    Button {
+                        Task { await auth.retrySessionRestore() }
+                    } label: {
+                        Text("Try Again", bundle: .module)
+                    }
+                }
+                .multilineTextAlignment(.center)
+                .padding()
             } else if !auth.isLoggedIn {
                 NavigationStack { AuthSignInScreen(configuration: auth.configuration) }
             } else {

@@ -25,5 +25,17 @@ struct AuthSignInScreenSnapshotTests {
         await assertScreenSnapshot(testName: #function) { Text("Signed in").kamaalAuth(auth) }
     }
 
+    @Test
+    func `Renders the retry screen when session restoration is unavailable`() async throws {
+        let auth = KamaalAuth(
+            client: PreviewKamaalAuthClient(outcome: .serverUnavailable, hasValidCredentials: true),
+            configuration: configuration,
+            cachedSessionStore: CachedUserSessionStoreSpy(),
+            waitBeforeSessionRetry: { _ in })
+        await yield(until: { auth.canRetrySessionRestore })
+        try #require(auth.canRetrySessionRestore)
+        await assertScreenSnapshot(testName: #function) { Text("Signed in").kamaalAuth(auth) }
+    }
+
     private var configuration: KamaalAuthConfiguration { .init(appName: "App") }
 }
