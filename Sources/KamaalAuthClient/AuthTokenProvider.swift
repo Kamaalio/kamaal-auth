@@ -40,35 +40,61 @@ public struct AuthTokenProvider: Sendable {
         storedCredentials()
     }
 
-    /// A token safe to sign a request with, or `nil` when the caller should proceed unauthenticated.
+    /// A token safe to sign a request with, or `nil` if none is available.
     public func validAuthToken() async -> String? {
-        guard let credentials = storedCredentials() else { return nil }
+        try? await resolveAuthToken().get()
+    }
+
+    /// Distinguishes a missing session from a failed refresh that callers can retry.
+    package func resolveAuthToken() async -> Result<String?, SessionErrors> {
+        guard let credentials = storedCredentials() else { return .success(nil) }
 
         guard !credentials.sessionHasExpired else {
             deleteCredentials(reason: "session_expired")
 
-            return nil
+            return .success(nil)
         }
 
         guard credentials.shouldUpdateSession || credentials.authTokenWillExpireSoon() else {
-            return credentials.authToken
+            return .success(credentials.authToken)
         }
 
         let reason = credentials.shouldUpdateSession ? "session_update_age" : "auth_token_expiring"
         logger.info("Refreshing the authentication token; reason=\(reason); credential=session_token")
 
-        guard case .success = await refreshToken() else { return nil }
-
-        return storedCredentials()?.authToken
+        switch await refreshToken(for: credentials) {
+        case .success:
+            return .success(storedCredentials()?.authToken)
+        case .failure(.unauthorized):
+            return .success(nil)
+        case .failure(let failure):
+            if let current = storedCredentials(),
+                current.sessionToken == credentials.sessionToken,
+                !current.sessionHasExpired,
+                !current.authTokenHasExpired
+            {
+                return .success(current.authToken)
+            }
+            return .failure(failure)
+        }
     }
 
     public func refreshToken() async -> Result<Void, SessionErrors> {
         guard let credentials = storedCredentials() else { return .failure(.unauthorized) }
 
-        switch await issueToken() {
+        return await refreshToken(for: credentials)
+    }
+
+    private func refreshToken(for credentials: Credentials) async -> Result<Void, SessionErrors> {
+        let outcome = await issueToken()
+        guard let current = storedCredentials(), current.sessionToken == credentials.sessionToken else {
+            return .failure(.unknown(status: 503, payload: nil, cause: nil))
+        }
+
+        switch outcome {
         case .success(let headers):
             do {
-                try persist(headers, keepingSessionExpiry: credentials.sessionExpiryDate)
+                try persist(headers, keepingSessionExpiry: current.sessionExpiryDate)
             } catch {
                 return .failure(.unknown(status: 500, payload: nil, cause: error))
             }

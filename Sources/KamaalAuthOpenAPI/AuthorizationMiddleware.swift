@@ -16,8 +16,8 @@ private let logger = KamaalLogger(from: AuthorizationMiddleware.self)
 /// Install this on the generated client that serves the rest of the API, so every request is authenticated the same
 /// way. All the policy lives in ``AuthTokenProvider``; this only attaches what the provider hands back.
 ///
-/// An unauthenticated request is passed through untouched rather than failed, leaving it to the server to answer
-/// with a 401. The client has no better answer than the server does.
+/// Requests without credentials pass through untouched. A recoverable refresh failure throws a ``SessionErrors``
+/// when no usable JWT remains. Session hooks should report that error as a recoverable failure.
 public struct AuthorizationMiddleware: ClientMiddleware {
     let tokenProvider: AuthTokenProvider
 
@@ -32,7 +32,7 @@ public struct AuthorizationMiddleware: ClientMiddleware {
         operationID: String,
         next: @concurrent @Sendable (HTTPRequest, HTTPBody?, URL) async throws -> (HTTPResponse, HTTPBody?)
     ) async throws -> (HTTPResponse, HTTPBody?) {
-        guard let authToken = await tokenProvider.validAuthToken() else {
+        guard let authToken = try await tokenProvider.resolveAuthToken().get() else {
             return try await next(request, body, baseURL)
         }
 
