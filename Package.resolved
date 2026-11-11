@@ -1,5 +1,5 @@
 {
-  "originHash" : "8103ce8c84d7c47089749d6e9f40bd7ba669e9b21afe8f7c2b39fb42ea6d6558",
+  "originHash" : "89e56fab39dea6c3d17677a6377d9a890d48ca1b5c6e5417c0a5cbc4229c32b2",
   "pins" : [
     {
       "identity" : "confettiswiftui",
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-issue-reporting",
       "state" : {
-        "revision" : "75b000cea2ca6d7527a57e1b9cc0bdf21a9abe9f",
-        "version" : "2.1.1"
+        "revision" : "b23bb4493c439d3e05152bc167014235ba3d47fc",
+        "version" : "2.1.2"
       }
     },
     {
@@ -51,8 +51,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-openapi-runtime",
       "state" : {
-        "revision" : "50ad7976f18fec6c09466d2aebf7be3dc9476cfb",
-        "version" : "1.13.0"
+        "revision" : "b9ebb3f06f1dac717156a04f0919ad444cbcf8f5",
+        "version" : "1.13.4"
       }
     },
     {
@@ -60,8 +60,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-snapshot-testing",
       "state" : {
-        "revision" : "28e5de025e3fd98991791bfbf83023ab3708da03",
-        "version" : "1.19.6"
+        "revision" : "1488390b0735e726564b948bf08b384398bdab5c",
+        "version" : "1.19.7"
       }
     },
     {

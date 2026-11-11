@@ -13,6 +13,10 @@ SWIFT_IOS_TEST_DESTINATION := "platform=iOS Simulator,name=iPhone 17,OS=27.0"
 default:
     just --list --unsorted
 
+# Print the pnpm version required by package.json
+pnpm-version:
+    @jq -r '.devEngines.packageManager.version' package.json
+
 # Generate the shared UI string catalog, then run all verification checks.
 ready: prepare-ready ready-tasks
 
