@@ -32,7 +32,7 @@ func assertScreenSnapshot<Screen: View>(
             let capture = MountedScreenSnapshot(screen: screen(), scheme: scheme, compact: compact)
             guard let image = await capture.image() else {
                 Issue.record(
-                    "The mounted screen did not settle within four seconds.",
+                    "The mounted screen could not produce a settled snapshot.",
                     sourceLocation: SourceLocation(
                         fileID: "\(fileID)", filePath: "\(filePath)", line: Int(line), column: Int(column)))
                 return
@@ -76,11 +76,10 @@ private enum ScreenSnapshotQueue {
         private let controller: UIViewController
         private let hosting: UIViewController
         private let traits: UITraitCollection
-        private var previousImage: Data?
-        private var matchingFrames = 0
-        private var lastImageChange: CFTimeInterval = 0
+        private var latestImage: UIImage?
         private var completion: CheckedContinuation<UIImage?, Never>?
-        private var deadline: CFTimeInterval = 0
+        private var startedAt: CFTimeInterval = 0
+        private var stability = ScreenSnapshotStability()
 
         init<Screen: View>(screen: Screen, scheme: ColorScheme, compact: Bool) {
             let config =
@@ -126,7 +125,7 @@ private enum ScreenSnapshotQueue {
         }
 
         func image() async -> UIImage? {
-            deadline = CACurrentMediaTime() + 4
+            startedAt = CACurrentMediaTime()
             return await withCheckedContinuation { completion in
                 self.completion = completion
                 let displayLink = CADisplayLink(target: self, selector: #selector(captureFrame))
@@ -137,29 +136,45 @@ private enum ScreenSnapshotQueue {
         // Observe one mounted hierarchy instead of restarting SwiftUI and UIKit
         // initialization on each frame. The reference never participates in settling.
         @objc private func captureFrame(_ displayLink: CADisplayLink) {
-            guard CACurrentMediaTime() < deadline else {
-                finish(displayLink, image: nil)
-                return
-            }
             let view = hosting.view!
             view.layoutIfNeeded()
             let renderer = UIGraphicsImageRenderer(bounds: view.bounds, format: .init(for: traits))
             let image = renderer.image { view.layer.render(in: $0.cgContext) }
-            guard let data = image.pngData() else {
+            // Compare pixels directly; PNG compression on every display frame
+            // consumes the settling deadline on slower CI simulators.
+            guard let data = image.cgImage?.dataProvider?.data as Data? else {
                 finish(displayLink, image: nil)
                 return
             }
-            if data == previousImage {
-                matchingFrames += 1
-            } else {
-                matchingFrames = 0
-                lastImageChange = CACurrentMediaTime()
+            latestImage = image
+            let now = CACurrentMediaTime()
+            switch stability.observe(data, at: now) {
+            case .pending:
+                return
+            case .settled:
+                finish(displayLink, image: image)
+            case .timedOut:
+                saveUnsettledFrame()
+                Issue.record(
+                    """
+                    Snapshot did not settle: \(stability.frameCount) frames,
+                    \(now - startedAt)s total, first frame at \(String(describing: stability.firstFrameAt)),
+                    \(now - stability.lastChangeAt)s unchanged.
+                    """)
+                finish(displayLink, image: nil)
             }
-            previousImage = data
-            // Native controls can pause between their initial image and entrance fade.
-            // A quiet interval spans that pause; any changed pixel restarts it.
-            guard matchingFrames >= 2, CACurrentMediaTime() - lastImageChange >= 0.5 else { return }
-            finish(displayLink, image: image)
+        }
+
+        private func saveUnsettledFrame() {
+            guard let data = latestImage?.pngData() else { return }
+            let directory = URL.temporaryDirectory.appending(path: "AuthSignInScreenUnsettledSnapshotTests")
+            let file = directory.appending(path: "unsettled-\(traits.userInterfaceStyle.rawValue).png")
+            do {
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                try data.write(to: file)
+            } catch {
+                Issue.record("Could not save the unsettled screen: \(error)")
+            }
         }
 
         private func finish(_ displayLink: CADisplayLink, image: UIImage?) {
